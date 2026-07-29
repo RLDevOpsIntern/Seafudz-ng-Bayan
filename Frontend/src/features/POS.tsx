@@ -4,6 +4,7 @@ import { CategoryTabs } from '../components/CategoryTabs'
 import { MenuGrid } from '../components/MenuGrid'
 import { OrderSummary } from '../components/OrderSummary'
 import { SuccessModal } from '../components/SuccessModal'
+import { ReceiptModal } from './ReceiptModal'
 import type { MenuItem } from '../components/MenuCard'
 import type { CartItem } from '../components/OrderItemRow'
 
@@ -75,11 +76,15 @@ export const POS: React.FC = () => {
   const [tableLocation, setTableLocation] = useState('Table 1')
   const [orderType, setOrderType] = useState('Take Out')
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false)
   const [lastOrderDetails, setLastOrderDetails] = useState<{
     table: string
     type: string
     total: number
     cartItems: CartItem[]
+    cashReceived?: string
+    change?: number | null
+    paymentMethod?: string
   } | null>(null)
 
   // Filter items based on search query and category selection
@@ -152,6 +157,27 @@ export const POS: React.FC = () => {
     setLastOrderDetails(null)
   }
 
+  const handleConfirmPayment = (cashReceived: string, change: number | null, paymentMethod: string) => {
+    setLastOrderDetails((prev) =>
+      prev
+        ? {
+            ...prev,
+            cashReceived,
+            change,
+            paymentMethod,
+          }
+        : null
+    )
+    setIsSuccessModalOpen(false)
+    setIsReceiptModalOpen(true)
+  }
+
+  const handleCloseReceiptModal = () => {
+    setIsReceiptModalOpen(false)
+    setCartItems([])
+    setLastOrderDetails(null)
+  }
+
   return (
     <div className="min-h-screen bg-[#f8f6f4] p-4 lg:p-6 transition-all duration-300">
       <div className="max-w-[1440px] mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6 items-stretch">
@@ -193,6 +219,14 @@ export const POS: React.FC = () => {
       <SuccessModal
         isOpen={isSuccessModalOpen}
         onClose={handleCloseSuccessModal}
+        onConfirm={handleConfirmPayment}
+        orderDetails={lastOrderDetails}
+      />
+
+      {/* Receipt popup */}
+      <ReceiptModal
+        isOpen={isReceiptModalOpen}
+        onClose={handleCloseReceiptModal}
         orderDetails={lastOrderDetails}
       />
     </div>
