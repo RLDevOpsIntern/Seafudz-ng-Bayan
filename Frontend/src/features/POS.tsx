@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { Navbar } from '../components/Navbar'
 import { CategoryTabs } from '../components/CategoryTabs'
 import { MenuGrid } from '../components/MenuGrid'
@@ -8,68 +8,15 @@ import { ReceiptModal } from './ReceiptModal'
 import type { MenuItem } from '../components/MenuCard'
 import type { CartItem } from '../components/OrderItemRow'
 
-// Import assets
-import seafoodBilaoImg from '../assets/seafood_bilao.png'
-import seafoodCajunImg from '../assets/seafood_cajun.png'
-import spicyShrimpImg from '../assets/spicy_shrimp.png'
-import crabBucketImg from '../assets/crab_bucket.png'
-import garlicButterShrimpImg from '../assets/garlic_butter_shrimp.png'
-import freshJuiceImg from '../assets/fresh_juice.png'
-
-// Initial list of dishes matching the screenshot
-const MENU_ITEMS: MenuItem[] = [
-  {
-    id: 'm1',
-    name: 'Seafood Bilao',
-    description: 'Shrimp, crab, clams',
-    price: 2000,
-    category: 'Seafood',
-    image: seafoodBilaoImg,
-  },
-  {
-    id: 'm2',
-    name: 'Seafood Cajun Mix',
-    description: 'Cajun Seafood Boil',
-    price: 1800,
-    category: 'Seafood',
-    image: seafoodCajunImg,
-  },
-  {
-    id: 'm3',
-    name: 'Spicy Shrimp',
-    description: 'Garlic Butter Shrimp Mix',
-    price: 1200,
-    category: 'Shrimp',
-    image: spicyShrimpImg,
-  },
-  {
-    id: 'm4',
-    name: 'Crab Bucket',
-    description: 'Yang Chow Fried Rice w/ Steamed',
-    price: 2500,
-    category: 'Crab',
-    image: crabBucketImg,
-  },
-  {
-    id: 'm5',
-    name: 'Garlic Butter Shrimp',
-    description: 'Garlic Boy with Steamed',
-    price: 1000,
-    category: 'Shrimp',
-    image: garlicButterShrimpImg,
-  },
-  {
-    id: 'm6',
-    name: 'Fresh Juice',
-    description: 'Purple Fruit Juicy / Mixed Fruit Drinks',
-    price: 250,
-    category: 'Drinks',
-    image: freshJuiceImg,
-  },
-]
+const API_BASE_URL = 'http://localhost:5000/api'
 
 export const POS: React.FC = () => {
   // State variables
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+  const [categories, setCategories] = useState<string[]>(['All Menu'])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('All Menu')
   const [cartItems, setCartItems] = useState<CartItem[]>([])
@@ -77,6 +24,7 @@ export const POS: React.FC = () => {
   const [orderType, setOrderType] = useState('Take Out')
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false)
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false)
   const [lastOrderDetails, setLastOrderDetails] = useState<{
     table: string
     type: string
@@ -87,19 +35,60 @@ export const POS: React.FC = () => {
     paymentMethod?: string
   } | null>(null)
 
+  // Fetch Menu Items & Categories from Express Backend
+  const fetchBackendData = async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const [menuRes, categoriesRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/menu`),
+        fetch(`${API_BASE_URL}/categories`),
+      ])
+
+      if (!menuRes.ok) throw new Error('Failed to fetch menu items from backend')
+
+      const menuData = await menuRes.json()
+      setMenuItems(menuData.data || [])
+
+      if (categoriesRes.ok) {
+        const catData = await categoriesRes.json()
+        const catList = ['All Menu', ...catData.data.map((c: { name: string }) => c.name)]
+        setCategories(catList)
+      }
+    } catch (err: unknown) {
+      console.error('Backend Menu Fetch Error:', err)
+      setError('Could not connect to Backend Server (http://localhost:5000). Please start the Express server.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchBackendData()
+  }, [])
+
+  const totalCartCount = useMemo(() => {
+    return cartItems.reduce((acc, item) => acc + item.quantity, 0)
+  }, [cartItems])
+
+  const totalCartPrice = useMemo(() => {
+    const rawSubtotal = cartItems.reduce((acc, item) => acc + item.item.price * item.quantity, 0)
+    return Math.round(rawSubtotal * 1.12)
+  }, [cartItems])
+
   // Filter items based on search query and category selection
   const filteredItems = useMemo(() => {
-    return MENU_ITEMS.filter((item) => {
+    return menuItems.filter((item) => {
       const matchesSearch =
         item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.description.toLowerCase().includes(searchQuery.toLowerCase())
 
       const matchesCategory =
-        selectedCategory === 'All Menu' || item.category === selectedCategory
+        selectedCategory === 'All Menu' || item.category.toLowerCase() === selectedCategory.toLowerCase()
 
       return matchesSearch && matchesCategory
     })
-  }, [searchQuery, selectedCategory])
+  }, [menuItems, searchQuery, selectedCategory])
 
   // Cart Handlers
   const handleAddToCart = (item: MenuItem) => {
@@ -148,6 +137,7 @@ export const POS: React.FC = () => {
       total: totalWithVat,
       cartItems: [...cartItems],
     })
+    setIsMobileCartOpen(false)
     setIsSuccessModalOpen(true)
   }
 
@@ -157,7 +147,51 @@ export const POS: React.FC = () => {
     setLastOrderDetails(null)
   }
 
-  const handleConfirmPayment = (cashReceived: string, change: number | null, paymentMethod: string) => {
+  const handleConfirmPayment = async (cashReceived: string, change: number | null, paymentMethod: string) => {
+    const rawSubtotal = cartItems.reduce((acc, ci) => acc + ci.item.price * ci.quantity, 0)
+    const vat = rawSubtotal * 0.12
+    const total = Math.round(rawSubtotal + vat)
+
+    const newOrderObj = {
+      id: `ORD-${Date.now().toString().slice(-4)}`,
+      table: tableLocation,
+      type: orderType,
+      status: 'Pending',
+      paymentStatus: 'Paid',
+      paymentMethod,
+      subtotal: rawSubtotal,
+      vat: Math.round(vat),
+      total,
+      createdAt: new Date().toISOString(),
+      cartItems: [...cartItems],
+    }
+
+    // Save to localStorage for instant client & cross-tab sync
+    try {
+      const existing = JSON.parse(localStorage.getItem('seafudz_orders') || '[]')
+      const updated = [newOrderObj, ...existing]
+      localStorage.setItem('seafudz_orders', JSON.stringify(updated))
+      window.dispatchEvent(new Event('seafudz_order_created'))
+    } catch (e) {
+      console.warn('localStorage save error:', e)
+    }
+
+    // Also post to Express Backend API
+    try {
+      await fetch(`${API_BASE_URL}/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          table: tableLocation,
+          type: orderType,
+          cartItems,
+          paymentMethod,
+        }),
+      })
+    } catch (err) {
+      console.error('Failed to post order to backend API:', err)
+    }
+
     setLastOrderDetails((prev) =>
       prev
         ? {
@@ -175,45 +209,108 @@ export const POS: React.FC = () => {
   const handleCloseReceiptModal = () => {
     setIsReceiptModalOpen(false)
     setCartItems([])
+    setTableLocation('Table 1')
+    setOrderType('Take Out')
     setLastOrderDetails(null)
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f6f4] p-4 lg:p-6 transition-all duration-300">
-      <div className="max-w-[1440px] mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6 items-stretch">
-        
-        {/* Main Content Area (3 Columns wide on large devices) */}
-        <main className="lg:col-span-3 flex flex-col gap-6">
-          {/* Header/Navbar */}
-          <Navbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+    <div className="min-h-screen bg-[#f8f6f4] p-3 sm:p-4 lg:p-4 transition-all duration-300 pb-24 lg:pb-6">
+      <div className="w-full flex flex-col gap-4 sm:gap-6">
+        {/* Full-Width Header/Navbar */}
+        <Navbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
 
-          {/* Category Tabs */}
-          <CategoryTabs
-            selectedCategory={selectedCategory}
-            setSelectedCategory={setSelectedCategory}
-          />
+        {/* Layout Grid: Left Menu Content (3 cols) & Rightmost Order Summary (1 col) */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 items-start">
+          {/* Main Left Content Area */}
+          <main className="lg:col-span-3 flex flex-col gap-4 sm:gap-6">
+            {/* Category Tabs */}
+            <CategoryTabs
+              selectedCategory={selectedCategory}
+              setSelectedCategory={setSelectedCategory}
+              categories={categories}
+            />
 
-          {/* Menu Items Grid */}
-          <section className="flex-grow">
-            <MenuGrid items={filteredItems} onAddToCart={handleAddToCart} />
-          </section>
-        </main>
+            {/* Menu Items Grid / Loading / Error */}
+            <section className="flex-grow">
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-2xl border border-neutral-200/80">
+                  <div className="w-8 h-8 border-3 border-orange-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+                  <p className="text-sm font-semibold text-neutral-600">Loading live 100-item menu from Express backend...</p>
+                </div>
+              ) : error ? (
+                <div className="flex flex-col items-center justify-center py-16 px-6 bg-red-50/50 rounded-2xl border border-red-200 text-center">
+                  <p className="text-sm font-bold text-red-600 mb-2">⚠️ Backend Connection Warning</p>
+                  <p className="text-xs text-neutral-600 max-w-md mb-4 leading-relaxed">{error}</p>
+                  <button
+                    onClick={fetchBackendData}
+                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all cursor-pointer"
+                  >
+                    Retry Connection
+                  </button>
+                </div>
+              ) : (
+                <MenuGrid items={filteredItems} onAddToCart={handleAddToCart} />
+              )}
+            </section>
+          </main>
 
-        {/* Sidebar Summary Area (1 Column wide) */}
-        <div className="lg:col-span-1 h-full min-h-[500px]">
-          <OrderSummary
-            cartItems={cartItems}
-            tableLocation={tableLocation}
-            setTableLocation={setTableLocation}
-            orderType={orderType}
-            setOrderType={setOrderType}
-            onIncrement={handleIncrement}
-            onDecrement={handleDecrement}
-            onRemove={handleRemove}
-            onConfirmOrder={handleConfirmOrder}
-          />
+          {/* Rightmost Sidebar Summary Area */}
+          <div className="hidden lg:block lg:col-span-1 lg:sticky lg:top-6 h-full">
+            <OrderSummary
+              cartItems={cartItems}
+              tableLocation={tableLocation}
+              setTableLocation={setTableLocation}
+              orderType={orderType}
+              setOrderType={setOrderType}
+              onIncrement={handleIncrement}
+              onDecrement={handleDecrement}
+              onRemove={handleRemove}
+              onConfirmOrder={handleConfirmOrder}
+            />
+          </div>
         </div>
       </div>
+
+      {/* Mobile Floating Bottom Cart Bar */}
+      {cartItems.length > 0 && (
+        <div className="fixed bottom-3 left-3 right-3 lg:hidden z-40">
+          <button
+            onClick={() => setIsMobileCartOpen(true)}
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white font-semibold py-3 px-4 rounded-xl shadow-lg flex items-center justify-between transition-all active:scale-98 cursor-pointer"
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="bg-white/20 px-2 py-0.5 rounded-lg text-xs font-bold">
+                {totalCartCount} {totalCartCount === 1 ? 'item' : 'items'}
+              </span>
+              <span className="text-sm font-medium">View Order</span>
+            </div>
+            <span className="text-sm font-bold">
+              ₱{totalCartPrice.toLocaleString()}
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* Mobile Bottom Slide-Up Drawer Overlay */}
+      {isMobileCartOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 lg:hidden flex flex-col justify-end p-0 sm:p-4 animate-fade-in">
+          <div className="w-full max-h-[85vh] h-[85vh] rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl animate-slide-up">
+            <OrderSummary
+              cartItems={cartItems}
+              tableLocation={tableLocation}
+              setTableLocation={setTableLocation}
+              orderType={orderType}
+              setOrderType={setOrderType}
+              onIncrement={handleIncrement}
+              onDecrement={handleDecrement}
+              onRemove={handleRemove}
+              onConfirmOrder={handleConfirmOrder}
+              onClose={() => setIsMobileCartOpen(false)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Confirmation success popup */}
       <SuccessModal

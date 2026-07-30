@@ -12,6 +12,7 @@ interface OrderSummaryProps {
   onDecrement: (itemId: string) => void
   onRemove: (itemId: string) => void
   onConfirmOrder: () => void
+  onClose?: () => void
 }
 
 export const OrderSummary: React.FC<OrderSummaryProps> = ({
@@ -24,6 +25,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   onDecrement,
   onRemove,
   onConfirmOrder,
+  onClose,
 }) => {
   // Calculations
   const rawSubtotal = cartItems.reduce((acc, item) => acc + item.item.price * item.quantity, 0)
@@ -31,24 +33,39 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
   const total = rawSubtotal + vatAmount
 
   return (
-    <aside className="bg-[#907366] rounded-3xl p-6 text-white flex flex-col h-full shadow-lg border border-[#7f6356]">
+    <aside className="bg-white rounded-2xl p-5 sm:p-6 text-neutral-900 flex flex-col h-full shadow-2xs border border-neutral-200/80 transition-all">
       {/* Header */}
-      <div className="mb-6 flex-shrink-0">
-        <h2 className="text-xl font-bold tracking-wide">Order Summary</h2>
-        <p className="text-xs text-amber-100/60 font-semibold mt-1">Order #A123</p>
+      <div className="mb-4 sm:mb-5 flex-shrink-0 flex items-center justify-between">
+        <div>
+          <h2 className="text-base sm:text-lg font-bold text-neutral-900 tracking-tight">
+            Order Summary
+          </h2>
+          <p className="text-xs text-neutral-400 font-medium mt-0.5">Terminal #01 • Order #A123</p>
+        </div>
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="lg:hidden text-neutral-400 hover:text-neutral-700 bg-neutral-100 w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer"
+            aria-label="Close drawer"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Selectors */}
-      <div className="space-y-4 mb-6 flex-shrink-0">
+      <div className="grid grid-cols-2 gap-3 mb-4 flex-shrink-0">
         <div>
-          <label className="block text-xs font-bold text-amber-100/80 uppercase tracking-wider mb-2">
-            Table location
+          <label className="block text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-1">
+            Table
           </label>
           <div className="relative">
             <select
               value={tableLocation}
               onChange={(e) => setTableLocation(e.target.value)}
-              className="w-full bg-white text-neutral-800 rounded-xl px-4 py-3 text-sm font-semibold appearance-none border border-neutral-100 shadow-xs focus:outline-none focus:ring-2 focus:ring-orange-400 cursor-pointer"
+              className="w-full bg-neutral-50 hover:bg-neutral-100/80 text-neutral-800 rounded-xl px-3 py-2 text-xs font-semibold appearance-none border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 cursor-pointer"
             >
               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((t) => (
                 <option key={t} value={`Table ${t}`}>
@@ -56,8 +73,8 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
                 </option>
               ))}
             </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-neutral-500">
-              <svg className="fill-current h-4.5 w-4.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-neutral-400">
+              <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                 <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
               </svg>
             </div>
@@ -65,20 +82,20 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
         </div>
 
         <div>
-          <label className="block text-xs font-bold text-amber-100/80 uppercase tracking-wider mb-2">
-            Order Type
+          <label className="block text-[11px] font-semibold text-neutral-500 uppercase tracking-wider mb-1">
+            Type
           </label>
           <div className="relative">
             <select
               value={orderType}
               onChange={(e) => setOrderType(e.target.value)}
-              className="w-full bg-white text-neutral-800 rounded-xl px-4 py-3 text-sm font-semibold appearance-none border border-neutral-100 shadow-xs focus:outline-none focus:ring-2 focus:ring-orange-400 cursor-pointer"
+              className="w-full bg-neutral-50 hover:bg-neutral-100/80 text-neutral-800 rounded-xl px-3 py-2 text-xs font-semibold appearance-none border border-neutral-200 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 cursor-pointer"
             >
               <option value="Take Out">Take Out</option>
               <option value="Dine In">Dine In</option>
             </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-neutral-500">
-              <svg className="fill-current h-4.5 w-4.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2.5 text-neutral-400">
+              <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
                 <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/>
               </svg>
             </div>
@@ -87,15 +104,20 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
       </div>
 
       {/* Order Items List */}
-      <div className="flex-1 flex flex-col min-h-0 mb-6">
-        <label className="block text-xs font-bold text-amber-100/80 uppercase tracking-wider mb-2 flex-shrink-0">
-          Order Items
-        </label>
+      <div className="flex-1 flex flex-col min-h-0 mb-4">
+        <div className="flex items-center justify-between mb-1.5 flex-shrink-0">
+          <label className="text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
+            Items ({cartItems.reduce((a, b) => a + b.quantity, 0)})
+          </label>
+        </div>
         
-        <div className="flex-1 overflow-y-auto pr-1 space-y-1 custom-scrollbar">
+        <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
           {cartItems.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-center px-4 py-12">
-              <p className="text-sm text-amber-100/40 font-semibold select-none">No items selected.</p>
+            <div className="h-full flex flex-col items-center justify-center text-center px-4 py-8 bg-neutral-50 rounded-xl border border-dashed border-neutral-200">
+              <svg className="w-7 h-7 text-neutral-300 mb-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+              <p className="text-xs text-neutral-400 font-medium select-none">Cart is empty</p>
             </div>
           ) : (
             cartItems.map((cartItem) => (
@@ -112,26 +134,26 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
       </div>
 
       {/* Pricing Summary Card & Confirm Button */}
-      <div className="space-y-4 flex-shrink-0">
-        <div className="bg-white rounded-2xl p-4 text-neutral-800 shadow-md">
-          <div className="flex items-center justify-between text-sm font-semibold text-neutral-500 mb-1">
+      <div className="space-y-3 flex-shrink-0 pt-2 border-t border-neutral-100">
+        <div className="space-y-1.5 text-xs font-medium text-neutral-500">
+          <div className="flex items-center justify-between">
             <span>Subtotal</span>
-            <span>₱{rawSubtotal.toLocaleString()}</span>
+            <span className="font-semibold text-neutral-700">₱{rawSubtotal.toLocaleString()}</span>
           </div>
-          <div className="flex items-center justify-between text-sm font-semibold text-neutral-500 pb-3 border-b border-neutral-100 mb-3">
+          <div className="flex items-center justify-between">
             <span>VAT (12%)</span>
-            <span>₱{Math.round(vatAmount).toLocaleString()}</span>
+            <span className="font-semibold text-neutral-700">₱{Math.round(vatAmount).toLocaleString()}</span>
           </div>
-          <div className="flex items-center justify-between font-bold text-emerald-600 text-lg">
+          <div className="flex items-center justify-between font-bold text-neutral-900 text-base pt-2 border-t border-neutral-100">
             <span>Total</span>
-            <span>₱{Math.round(total).toLocaleString()}</span>
+            <span className="text-lg text-orange-600">₱{Math.round(total).toLocaleString()}</span>
           </div>
         </div>
 
         <button
           onClick={onConfirmOrder}
           disabled={cartItems.length === 0}
-          className="w-full bg-[#ff7a00] hover:bg-[#e66e00] disabled:bg-neutral-500/30 disabled:text-white/40 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-2xl transition-all duration-200 shadow-md active:scale-[0.99] cursor-pointer text-center text-[15px]"
+          className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-neutral-200 disabled:text-neutral-400 disabled:cursor-not-allowed text-white font-semibold py-3 px-5 rounded-xl transition-all shadow-2xs active:scale-[0.99] cursor-pointer text-center text-sm"
         >
           Confirm Order
         </button>

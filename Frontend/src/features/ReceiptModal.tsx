@@ -71,6 +71,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, ord
       `)
       printWindow.document.close()
     }
+    // Automatically close receipt modal & reset POS order summary
+    onClose()
   }
 
   return (

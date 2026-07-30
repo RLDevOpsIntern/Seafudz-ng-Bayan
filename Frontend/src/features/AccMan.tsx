@@ -112,7 +112,7 @@ export const AccMan: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-[#f8f6f4] p-4 lg:p-6 transition-all duration-300">
-            <div className="max-w-[1440px] mx-auto flex flex-col gap-6">
+            <div className="w-full flex flex-col gap-6">
                 
                 {/* Custom-styled Navbar */}
                 <Navbar />

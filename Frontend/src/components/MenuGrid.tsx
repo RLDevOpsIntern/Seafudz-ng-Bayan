@@ -21,12 +21,14 @@ export const MenuGrid: React.FC<MenuGridProps> = ({ items, onAddToCart }) => {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {items.map((item) => (
-        <div key={item.id}>
-          <MenuCard item={item} onAddToCart={onAddToCart} />
-        </div>
-      ))}
+    <div className="max-h-[calc(100vh-240px)] min-h-[480px] overflow-y-auto pr-1.5 custom-scrollbar">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 pb-2">
+        {items.map((item) => (
+          <div key={item.id} className="h-full">
+            <MenuCard item={item} onAddToCart={onAddToCart} />
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
