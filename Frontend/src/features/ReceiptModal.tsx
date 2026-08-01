@@ -91,8 +91,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, ord
         </button>
 
         {/* Modal Title */}
-        <h3 className="text-center font-black text-neutral-800 tracking-wider mb-4 flex items-center justify-center gap-1.5 text-base">
-          <span>🧾</span> PRINT PREVIEW
+        <h3 className="text-center font-black text-neutral-800 tracking-wider mb-4 flex items-center justify-center text-base">
+          PRINT PREVIEW
         </h3>
 
         {/* Receipt Paper Container */}
@@ -104,7 +104,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, ord
           >
             {/* Header */}
             <div className="text-center space-y-1 mb-3">
-              <div className="text-sm font-black tracking-widest uppercase">🍤 Seafood ng Bayan 🍤</div>
+              <div className="text-sm font-black tracking-widest uppercase">Seafood ng Bayan</div>
               <div className="text-[10px] text-neutral-500 font-semibold">RESTAURANT & GRILL</div>
               <div className="text-[9px] text-neutral-400 font-medium">Cavite City, Philippines</div>
             </div>
@@ -194,7 +194,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, ord
             {/* Footer message */}
             <div className="text-center text-[10px] text-neutral-400 font-bold space-y-0.5 mt-2">
               <div>Thank you for dining with us!</div>
-              <div>Please come again! 🌊🍤</div>
+              <div>Please come again!</div>
             </div>
           </div>
         </div>
@@ -213,7 +213,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({ isOpen, onClose, ord
             type="button"
             className="flex-1 bg-[#ff7a00] hover:bg-[#e66e00] text-white font-bold py-3.5 px-4 rounded-xl transition-all duration-150 active:scale-99 cursor-pointer text-center text-sm shadow-md flex items-center justify-center gap-2"
           >
-            <span>🖨️</span> Print Receipt
+            Print Receipt
           </button>
         </div>
       </div>

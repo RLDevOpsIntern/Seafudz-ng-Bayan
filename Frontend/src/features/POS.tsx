@@ -64,7 +64,10 @@ export const POS: React.FC = () => {
   }
 
   useEffect(() => {
-    fetchBackendData()
+    const timer = setTimeout(() => {
+      void fetchBackendData()
+    }, 0)
+    return () => clearTimeout(timer)
   }, [])
 
   const totalCartCount = useMemo(() => {

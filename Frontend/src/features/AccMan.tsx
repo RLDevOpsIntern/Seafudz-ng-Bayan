@@ -44,7 +44,7 @@ export const AccMan: React.FC = () => {
     const [promoAlerts, setPromoAlerts] = useState(false)
 
     // Handlers
-    const handleProfileChange = (field: keyof UserProfile, value: any) => {
+    const handleProfileChange = (field: keyof UserProfile, value: string) => {
         setEditForm((prev) => ({ ...prev, [field]: value }))
     }
 

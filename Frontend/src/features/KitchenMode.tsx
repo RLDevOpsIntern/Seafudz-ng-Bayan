@@ -23,9 +23,30 @@ export interface KitchenOrder {
 
 const API_BASE_URL = 'http://localhost:5000/api'
 
-const mapRawToKitchenOrder = (raw: any): KitchenOrder => {
+interface RawCartItem {
+  item?: { name?: string }
+  name?: string
+  quantity?: number
+}
+
+interface RawOrder {
+  id: string
+  type?: string
+  table?: string
+  status?: string
+  notes?: string
+  total?: number
+  createdAt?: string
+  paymentMethod?: string
+  startTime?: number
+  completedTimeElapsed?: string
+  cartItems?: RawCartItem[]
+  items?: Array<{ name: string; quantity: number }>
+}
+
+const mapRawToKitchenOrder = (raw: RawOrder): KitchenOrder => {
   const items = raw.cartItems
-    ? raw.cartItems.map((ci: any) => ({
+    ? raw.cartItems.map((ci) => ({
         name: ci.item?.name || ci.name || 'Food Item',
         quantity: ci.quantity || 1,
       }))
@@ -51,14 +72,16 @@ export const KitchenMode: React.FC = () => {
   const [orders, setOrders] = useState<KitchenOrder[]>([])
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null)
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState<boolean>(false)
-  const [now, setNow] = useState<number>(Date.now())
+  const [now, setNow] = useState<number>(() => Date.now())
 
   // Fetch live orders from backend API & localStorage fallback
   const fetchKitchenOrders = async () => {
-    let localOrdersRaw: any[] = []
+    let localOrdersRaw: RawOrder[] = []
     try {
       localOrdersRaw = JSON.parse(localStorage.getItem('seafudz_orders') || '[]')
-    } catch (e) {}
+    } catch {
+      /* ignore */
+    }
 
     try {
       const res = await fetch(`${API_BASE_URL}/kitchen/orders`)
@@ -66,14 +89,14 @@ export const KitchenMode: React.FC = () => {
         const data = await res.json()
         if (Array.isArray(data.data)) {
           // Combine backend orders with local orders (preventing duplicate IDs)
-          const apiMap = new Map(data.data.map((o: any) => [o.id, o]))
-          localOrdersRaw.forEach((o: any) => {
+          const apiMap = new Map(data.data.map((o: { id: string }) => [o.id, o]))
+          localOrdersRaw.forEach((o: { id: string }) => {
             if (!apiMap.has(o.id)) {
               apiMap.set(o.id, o)
             }
           })
           const combined = Array.from(apiMap.values())
-          const mappedOrders: KitchenOrder[] = combined.map(mapRawToKitchenOrder)
+          const mappedOrders: KitchenOrder[] = combined.map((o) => mapRawToKitchenOrder(o as RawOrder))
           setOrders(mappedOrders)
           return
         }
@@ -89,14 +112,17 @@ export const KitchenMode: React.FC = () => {
 
   // Initial load, polling, and listening for order creation events
   useEffect(() => {
-    fetchKitchenOrders()
+    const initTimer = setTimeout(() => {
+      void fetchKitchenOrders()
+    }, 0)
     const pollTimer = setInterval(fetchKitchenOrders, 2000)
 
-    const handleStorageEvent = () => fetchKitchenOrders()
+    const handleStorageEvent = () => void fetchKitchenOrders()
     window.addEventListener('storage', handleStorageEvent)
     window.addEventListener('seafudz_order_created', handleStorageEvent)
 
     return () => {
+      clearTimeout(initTimer)
       clearInterval(pollTimer)
       window.removeEventListener('storage', handleStorageEvent)
       window.removeEventListener('seafudz_order_created', handleStorageEvent)
@@ -172,14 +198,17 @@ export const KitchenMode: React.FC = () => {
       })
     )
 
-    // Update localStorage
+    // Update localStorage & broadcast update event
     try {
       const existing = JSON.parse(localStorage.getItem('seafudz_orders') || '[]')
-      const updated = existing.map((o: any) =>
+      const updated = existing.map((o: { id: string; status: string }) =>
         o.id === id ? { ...o, status: newStatus } : o
       )
       localStorage.setItem('seafudz_orders', JSON.stringify(updated))
-    } catch (e) {}
+      window.dispatchEvent(new Event('seafudz_order_created'))
+    } catch {
+      /* ignore */
+    }
 
     // Persist to Express Backend
     try {
@@ -202,9 +231,11 @@ export const KitchenMode: React.FC = () => {
     // Delete from localStorage
     try {
       const existing = JSON.parse(localStorage.getItem('seafudz_orders') || '[]')
-      const updated = existing.filter((o: any) => o.id !== id)
+      const updated = existing.filter((o: { id: string }) => o.id !== id)
       localStorage.setItem('seafudz_orders', JSON.stringify(updated))
-    } catch (err) {}
+    } catch {
+      /* ignore */
+    }
 
     // Delete from Backend API
     try {
@@ -572,7 +603,7 @@ export const KitchenMode: React.FC = () => {
             <div className="px-6 py-4.5 bg-white border-b border-neutral-100 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-black text-neutral-900 flex items-center gap-2">
-                  📜 Order History
+                  Order History
                 </h2>
                 <p className="text-xs text-neutral-400 font-medium mt-0.5">
                   Completed orders received by customers
@@ -611,7 +642,6 @@ export const KitchenMode: React.FC = () => {
                       {paginatedHistoryOrders.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="px-6 py-12 text-center text-neutral-400">
-                            <div className="text-2xl mb-1">📊</div>
                             <div className="font-bold text-neutral-600 text-sm">No completed order history yet.</div>
                             <div className="text-xs text-neutral-400 mt-0.5">
                               Orders marked as 'Customer Received' will appear in this history table.

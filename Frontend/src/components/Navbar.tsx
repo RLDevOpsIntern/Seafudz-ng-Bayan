@@ -76,6 +76,13 @@ export const Navbar: React.FC<NavbarProps> = ({ searchQuery, setSearchQuery }) =
                 Assistant Mode
               </Link>
               <Link 
+                to="/tables" 
+                onClick={() => setIsMenuOpen(false)}
+                className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-orange-50 hover:text-orange-600 transition-all"
+              >
+                Table Visualizer
+              </Link>
+              <Link 
                 to="/rider" 
                 onClick={() => setIsMenuOpen(false)}
                 className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-orange-50 hover:text-orange-600 transition-all"

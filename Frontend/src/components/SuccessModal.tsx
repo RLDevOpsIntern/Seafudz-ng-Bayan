@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import type { CartItem } from './OrderItemRow'
 
 interface SuccessModalProps {
@@ -16,27 +16,27 @@ interface SuccessModalProps {
 export const SuccessModal: React.FC<SuccessModalProps> = ({ isOpen, onClose, onConfirm, orderDetails }) => {
   const [paymentMethod, setPaymentMethod] = useState<'Cash' | 'GCash' | 'Card'>('Cash')
   const [cashReceived, setCashReceived] = useState<string>('')
-  const [change, setChange] = useState<number | null>(null)
 
   const totalAmount = orderDetails ? Math.round(orderDetails.total) : 0
 
   // Reset inputs when modal opens/closes
   useEffect(() => {
     if (isOpen) {
-      setCashReceived('')
-      setChange(null)
-      setPaymentMethod('Cash')
+      const timer = setTimeout(() => {
+        setCashReceived('')
+        setPaymentMethod('Cash')
+      }, 0)
+      return () => clearTimeout(timer)
     }
   }, [isOpen])
 
-  // Calculate change when cashReceived or totalAmount changes
-  useEffect(() => {
+  // Calculate change derived from cashReceived and totalAmount
+  const change = useMemo(() => {
     const cash = parseFloat(cashReceived)
     if (!isNaN(cash) && cash >= totalAmount) {
-      setChange(cash - totalAmount)
-    } else {
-      setChange(null)
+      return cash - totalAmount
     }
+    return null
   }, [cashReceived, totalAmount])
 
   if (!isOpen || !orderDetails) return null
