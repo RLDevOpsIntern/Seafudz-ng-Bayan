@@ -1,33 +1,36 @@
 import { Router } from 'express';
+import { query } from '../config/db.js';
 
 const router = Router();
 
-let assistantCalls = [
-  {
-    id: "CALL-001",
-    table: "Table 3",
-    type: "Water Refill",
-    status: "Pending", // Pending, Attended, Resolved
-    timestamp: new Date(Date.now() - 5 * 60000).toISOString()
-  },
-  {
-    id: "CALL-002",
-    table: "Table 7",
-    type: "Request Bill",
-    status: "Pending",
-    timestamp: new Date(Date.now() - 2 * 60000).toISOString()
-  }
-];
-
 // GET /api/assistant/calls - Get active table assistance requests
-router.get('/assistant/calls', (req, res) => {
+router.get('/assistant/calls', async (req, res) => {
   try {
+    const sql = `
+      SELECT ac.id, ac.call_type AS type, ac.status, ac.created_at AS timestamp,
+             t.table_number, t.id AS table_id
+      FROM assistant_calls ac
+      LEFT JOIN tables t ON ac.table_id = t.id
+      ORDER BY ac.created_at DESC
+    `;
+    const { rows } = await query(sql);
+
+    const formattedCalls = rows.map((r) => ({
+      id: r.id,
+      table: r.table_number ? `Table ${r.table_number}` : 'Floor',
+      tableId: r.table_id,
+      type: r.type,
+      status: r.status,
+      timestamp: r.timestamp,
+    }));
+
     return res.status(200).json({
       success: true,
-      count: assistantCalls.length,
-      data: assistantCalls,
+      count: formattedCalls.length,
+      data: formattedCalls,
     });
   } catch (error) {
+    console.error('Error fetching assistant calls:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to retrieve assistant calls',
@@ -37,32 +40,25 @@ router.get('/assistant/calls', (req, res) => {
 });
 
 // POST /api/assistant/call - Trigger table assistance request
-router.post('/assistant/call', (req, res) => {
+router.post('/assistant/call', async (req, res) => {
   try {
-    const { table, type } = req.body;
-    if (!table) {
-      return res.status(400).json({
-        success: false,
-        message: 'Table location is required',
-      });
-    }
+    const { tableId, table, type } = req.body;
 
-    const newCall = {
-      id: `CALL-${Date.now().toString().slice(-3)}`,
-      table,
-      type: type || 'Call Waiter',
-      status: 'Pending',
-      timestamp: new Date().toISOString(),
-    };
+    const sql = `
+      INSERT INTO assistant_calls (table_id, call_type, status)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `;
 
-    assistantCalls.unshift(newCall);
+    const { rows } = await query(sql, [tableId || null, type || 'Call Waiter', 'pending']);
 
     return res.status(201).json({
       success: true,
       message: 'Assistance request sent to floor team',
-      data: newCall,
+      data: rows[0],
     });
   } catch (error) {
+    console.error('Error creating assistant call:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to create assistance request',
@@ -72,24 +68,34 @@ router.post('/assistant/call', (req, res) => {
 });
 
 // PATCH /api/assistant/calls/:id/resolve - Resolve assistance call
-router.patch('/assistant/calls/:id/resolve', (req, res) => {
+router.patch('/assistant/calls/:id/resolve', async (req, res) => {
   try {
-    const callIndex = assistantCalls.findIndex((c) => c.id === req.params.id);
-    if (callIndex === -1) {
+    const { id } = req.params;
+    const { employeeId } = req.body;
+
+    const sql = `
+      UPDATE assistant_calls
+      SET status = 'resolved', responded_by_employee_id = $1, resolved_at = NOW()
+      WHERE id = $2
+      RETURNING *
+    `;
+
+    const { rows } = await query(sql, [employeeId || null, id]);
+
+    if (rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: `Call '${req.params.id}' not found`,
+        message: `Call '${id}' not found`,
       });
     }
 
-    assistantCalls[callIndex].status = 'Resolved';
-
     return res.status(200).json({
       success: true,
-      message: `Call '${req.params.id}' resolved`,
-      data: assistantCalls[callIndex],
+      message: `Call '${id}' resolved`,
+      data: rows[0],
     });
   } catch (error) {
+    console.error('Error resolving assistant call:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to resolve assistance call',

@@ -1,71 +1,43 @@
 import { Router } from 'express';
-import { ordersStore } from './orderRoutes.js';
+import { query } from '../config/db.js';
 
 const router = Router();
 
-// Store initial restaurant table layouts
-export let tablesStore = [
-  { id: 'Table 1', name: 'Table 1', seats: 4, section: 'Main Dining', status: 'Available', shape: 'square' },
-  { id: 'Table 2', name: 'Table 2', seats: 2, section: 'Main Dining', status: 'Available', shape: 'round' },
-  { id: 'Table 3', name: 'Table 3', seats: 6, section: 'Main Dining', status: 'Available', shape: 'rectangle' },
-  { id: 'Table 4', name: 'Table 4', seats: 4, section: 'Main Dining', status: 'Available', shape: 'square' },
-  { id: 'Table 5', name: 'Table 5', seats: 8, section: 'VIP Family Alcove', status: 'Available', shape: 'rectangle' },
-  { id: 'Table 6', name: 'Table 6', seats: 4, section: 'VIP Family Alcove', status: 'Available', shape: 'round' },
-  { id: 'Table 7', name: 'Table 7', seats: 2, section: 'Alfresco Patio', status: 'Available', shape: 'round' },
-  { id: 'Table 8', name: 'Table 8', seats: 4, section: 'Alfresco Patio', status: 'Available', shape: 'square' },
-  { id: 'Table 9', name: 'Table 9', seats: 6, section: 'Alfresco Patio', status: 'Available', shape: 'rectangle' },
-  { id: 'Table 10', name: 'Table 10', seats: 4, section: 'Main Dining', status: 'Available', shape: 'square' },
-  { id: 'Table 11', name: 'Table 11', seats: 2, section: 'Main Dining', status: 'Available', shape: 'round' },
-  { id: 'Table 12', name: 'Table 12', seats: 8, section: 'VIP Bilao Party', status: 'Available', shape: 'rectangle' },
-];
-
-const isTableMatch = (orderTable, tableName) => {
-  if (!orderTable || !tableName) return false;
-  const o = String(orderTable).toLowerCase();
-  const t = String(tableName).toLowerCase();
-  return o === t || o.includes(t);
-};
-
-// GET /api/tables - Return real-time table statuses with active orders
-router.get('/tables', (req, res) => {
+// GET /api/tables - Return real-time table statuses with active orders from database
+router.get('/tables', async (req, res) => {
   try {
-    const updatedTables = tablesStore.map((table) => {
-      // Find active order for this table
-      const activeOrder = ordersStore.find(
-        (o) =>
-          isTableMatch(o.table, table.name) &&
-          o.status !== 'Completed' &&
-          o.status !== 'Served' &&
-          o.status !== 'Cancelled'
-      );
+    const sql = `
+      SELECT t.id, t.table_number AS name, t.capacity AS seats, t.status,
+             o.id AS "activeOrderId", o.order_number, o.total_amount, o.order_status, o.created_at AS "orderCreatedAt"
+      FROM tables t
+      LEFT JOIN orders o ON t.id = o.table_id AND o.order_status NOT IN ('completed', 'cancelled')
+      ORDER BY t.table_number ASC
+    `;
+    const { rows } = await query(sql);
 
-      if (activeOrder) {
-        return {
-          ...table,
-          status: 'Occupied',
-          activeOrder: {
-            id: activeOrder.id,
-            total: activeOrder.total,
-            itemsCount: activeOrder.cartItems ? activeOrder.cartItems.length : 0,
-            status: activeOrder.status,
-            createdAt: activeOrder.createdAt,
-          },
-        };
-      }
-
-      return {
-        ...table,
-        status: 'Available',
-        activeOrder: undefined,
-      };
-    });
+    const formattedTables = rows.map((r) => ({
+      id: r.id,
+      name: `Table ${r.name}`,
+      seats: r.seats,
+      status: r.activeOrderId ? 'Occupied' : (r.status || 'Available'),
+      activeOrder: r.activeOrderId
+        ? {
+            id: r.activeOrderId,
+            orderNumber: r.order_number,
+            total: r.total_amount,
+            status: r.order_status,
+            createdAt: r.orderCreatedAt,
+          }
+        : undefined,
+    }));
 
     return res.status(200).json({
       success: true,
-      count: updatedTables.length,
-      data: updatedTables,
+      count: formattedTables.length,
+      data: formattedTables,
     });
   } catch (error) {
+    console.error('Error fetching tables:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to retrieve tables',
@@ -74,27 +46,34 @@ router.get('/tables', (req, res) => {
   }
 });
 
-// PATCH /api/tables/:id/status - Update table status manually
-router.patch('/tables/:id/status', (req, res) => {
+// PATCH /api/tables/:id/status - Update table status
+router.patch('/tables/:id/status', async (req, res) => {
   try {
     const { status } = req.body;
-    const tableIndex = tablesStore.findIndex((t) => t.id === req.params.id || t.name === req.params.id);
+    const { id } = req.params;
 
-    if (tableIndex === -1) {
+    const sql = `
+      UPDATE tables
+      SET status = $1, updated_at = NOW()
+      WHERE id = $2 OR CAST(table_number AS TEXT) = $2
+      RETURNING *
+    `;
+    const { rows } = await query(sql, [status, id]);
+
+    if (rows.length === 0) {
       return res.status(404).json({
         success: false,
-        message: `Table '${req.params.id}' not found`,
+        message: `Table '${id}' not found`,
       });
     }
 
-    tablesStore[tableIndex].status = status;
-
     return res.status(200).json({
       success: true,
-      message: `Table '${req.params.id}' status updated to ${status}`,
-      data: tablesStore[tableIndex],
+      message: `Table '${id}' status updated to ${status}`,
+      data: rows[0],
     });
   } catch (error) {
+    console.error('Error updating table status:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to update table status',

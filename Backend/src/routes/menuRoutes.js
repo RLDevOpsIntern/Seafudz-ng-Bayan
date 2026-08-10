@@ -1,79 +1,89 @@
 import { Router } from 'express';
-import { menuItems } from '../data/menuItems.js';
+import { query } from '../config/db.js';
 
 const router = Router();
 
-// GET /api/menu - Get all menu items with filtering and search capabilities
-router.get('/menu', (req, res) => {
+// GET /api/menu - Get menu items from database with optional filters
+router.get('/menu', async (req, res) => {
   try {
     const { category, search, available, minPrice, maxPrice, limit, page } = req.query;
-    
-    let filtered = [...menuItems];
 
-    // Filter by Category
+    let sql = `
+      SELECT m.*, c.name AS category
+      FROM menu_items m
+      LEFT JOIN categories c ON m.category_id = c.id
+      WHERE 1=1
+    `;
+    const params = [];
+    let paramIndex = 1;
+
     if (category && category !== 'All Menu') {
-      filtered = filtered.filter(
-        (item) => item.category.toLowerCase() === category.toLowerCase()
-      );
+      sql += ` AND LOWER(c.name) = LOWER($${paramIndex++})`;
+      params.push(category);
     }
 
-    // Search by Name or Description
     if (search) {
-      const q = search.toLowerCase();
-      filtered = filtered.filter(
-        (item) =>
-          item.name.toLowerCase().includes(q) ||
-          item.description.toLowerCase().includes(q)
-      );
+      sql += ` AND (LOWER(m.name) LIKE $${paramIndex} OR LOWER(m.description) LIKE $${paramIndex})`;
+      params.push(`%${search.toLowerCase()}%`);
+      paramIndex++;
     }
 
-    // Filter by Availability
     if (available !== undefined) {
-      const isAvail = available === 'true';
-      filtered = filtered.filter((item) => item.isAvailable === isAvail);
+      sql += ` AND m.is_available = $${paramIndex++}`;
+      params.push(available === 'true');
     }
 
-    // Filter by Price range
     if (minPrice) {
-      filtered = filtered.filter((item) => item.price >= Number(minPrice));
-    }
-    if (maxPrice) {
-      filtered = filtered.filter((item) => item.price <= Number(maxPrice));
+      sql += ` AND m.price >= $${paramIndex++}`;
+      params.push(Number(minPrice));
     }
 
-    // Optional Pagination
-    const totalCount = filtered.length;
-    let paginated = filtered;
+    if (maxPrice) {
+      sql += ` AND m.price <= $${paramIndex++}`;
+      params.push(Number(maxPrice));
+    }
+
+    sql += ` ORDER BY m.created_at DESC`;
 
     if (limit && page) {
-      const pageNum = parseInt(page, 10) || 1;
       const limitNum = parseInt(limit, 10) || 10;
-      const startIndex = (pageNum - 1) * limitNum;
-      paginated = filtered.slice(startIndex, startIndex + limitNum);
+      const pageNum = parseInt(page, 10) || 1;
+      const offsetNum = (pageNum - 1) * limitNum;
+
+      sql += ` LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+      params.push(limitNum, offsetNum);
     }
+
+    const { rows } = await query(sql, params);
 
     return res.status(200).json({
       success: true,
-      count: totalCount,
-      totalItems: menuItems.length,
-      data: paginated,
+      count: rows.length,
+      data: rows,
     });
   } catch (error) {
+    console.error('Error fetching menu items:', error);
     return res.status(500).json({
       success: false,
-      message: 'Failed to retrieve menu items',
+      message: 'Failed to retrieve menu items from database',
       error: error.message,
     });
   }
 });
 
 // GET /api/menu/:id - Get single menu item by ID
-router.get('/menu/:id', (req, res) => {
+router.get('/menu/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const item = menuItems.find((m) => m.id === id);
+    const sql = `
+      SELECT m.*, c.name AS category
+      FROM menu_items m
+      LEFT JOIN categories c ON m.category_id = c.id
+      WHERE m.id = $1
+    `;
+    const { rows } = await query(sql, [id]);
 
-    if (!item) {
+    if (rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: `Menu item with ID '${id}' not found`,
@@ -82,9 +92,10 @@ router.get('/menu/:id', (req, res) => {
 
     return res.status(200).json({
       success: true,
-      data: item,
+      data: rows[0],
     });
   } catch (error) {
+    console.error('Error fetching menu item:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to retrieve menu item',
@@ -93,25 +104,25 @@ router.get('/menu/:id', (req, res) => {
   }
 });
 
-// GET /api/categories - Get all categories with counts
-router.get('/categories', (req, res) => {
+// GET /api/categories - Get categories with item counts
+router.get('/categories', async (req, res) => {
   try {
-    const categoriesMap = {};
-    menuItems.forEach((item) => {
-      categoriesMap[item.category] = (categoriesMap[item.category] || 0) + 1;
-    });
-
-    const categories = Object.keys(categoriesMap).map((cat) => ({
-      name: cat,
-      itemCount: categoriesMap[cat],
-    }));
+    const sql = `
+      SELECT c.id, c.name, COUNT(m.id)::int AS "itemCount"
+      FROM categories c
+      LEFT JOIN menu_items m ON c.id = m.category_id
+      GROUP BY c.id, c.name
+      ORDER BY c.display_order ASC, c.name ASC
+    `;
+    const { rows } = await query(sql);
 
     return res.status(200).json({
       success: true,
-      count: categories.length,
-      data: categories,
+      count: rows.length,
+      data: rows,
     });
   } catch (error) {
+    console.error('Error fetching categories:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to retrieve categories',

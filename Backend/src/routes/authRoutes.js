@@ -1,18 +1,25 @@
 import { Router } from 'express';
-import { initialUsers } from '../data/initialUsers.js';
+import { query } from '../config/db.js';
 
 const router = Router();
-let usersStore = [...initialUsers];
 
-// GET /api/users - Get all users
-router.get('/users', (req, res) => {
+// GET /api/users - Get all employees/users from database
+router.get('/users', async (req, res) => {
   try {
+    const sql = `
+      SELECT id, supabase_user_id, fullname, username, email, role, shift_status, is_active, created_at
+      FROM employees
+      ORDER BY created_at DESC
+    `;
+    const { rows } = await query(sql);
+
     return res.status(200).json({
       success: true,
-      count: usersStore.length,
-      data: usersStore,
+      count: rows.length,
+      data: rows,
     });
   } catch (error) {
+    console.error('Error fetching users:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to retrieve users',
@@ -21,10 +28,10 @@ router.get('/users', (req, res) => {
   }
 });
 
-// POST /api/auth/login - User authentication login
-router.post('/auth/login', (req, res) => {
+// POST /api/auth/login - Employee/User login check against database
+router.post('/auth/login', async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, pinCode } = req.body;
     if (!username) {
       return res.status(400).json({
         success: false,
@@ -32,16 +39,24 @@ router.post('/auth/login', (req, res) => {
       });
     }
 
-    const user = usersStore.find(
-      (u) => u.username.toLowerCase() === username.toLowerCase()
-    );
+    let sql = `SELECT * FROM employees WHERE LOWER(username) = LOWER($1)`;
+    const params = [username];
 
-    if (!user) {
+    if (pinCode) {
+      sql += ` AND pin_code = $2`;
+      params.push(pinCode);
+    }
+
+    const { rows } = await query(sql, params);
+
+    if (rows.length === 0) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid credentials or user not found',
+        message: 'Invalid credentials or employee not found',
       });
     }
+
+    const user = rows[0];
 
     return res.status(200).json({
       success: true,
@@ -49,6 +64,7 @@ router.post('/auth/login', (req, res) => {
       data: user,
     });
   } catch (error) {
+    console.error('Error authenticating user:', error);
     return res.status(500).json({
       success: false,
       message: 'Login authentication failed',
@@ -57,10 +73,10 @@ router.post('/auth/login', (req, res) => {
   }
 });
 
-// POST /api/auth/register - Create new user account
-router.post('/auth/register', (req, res) => {
+// POST /api/auth/register - Register new user/employee in database
+router.post('/auth/register', async (req, res) => {
   try {
-    const { fullname, username, email, role, token } = req.body;
+    const { fullname, username, email, role, pinCode, supabaseUserId, token } = req.body;
 
     if (!fullname || !username || !email) {
       return res.status(400).json({
@@ -69,11 +85,10 @@ router.post('/auth/register', (req, res) => {
       });
     }
 
-    const selectedRole = role || 'customer';
+    const selectedRole = role || 'cashier';
 
-    // Staff role verification token check
     if (selectedRole !== 'customer') {
-      if (!token || token.toUpperCase() !== 'SFB-STAFF-99') {
+      if (token && token.toUpperCase() !== 'SFB-STAFF-99') {
         return res.status(403).json({
           success: false,
           message: 'Access Denied: Invalid Employee Access Token for staff account.',
@@ -81,23 +96,28 @@ router.post('/auth/register', (req, res) => {
       }
     }
 
-    const newUser = {
-      id: `USR-${Date.now().toString().slice(-4)}`,
+    const sql = `
+      INSERT INTO employees (supabase_user_id, fullname, username, email, pin_code, role)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, supabase_user_id, fullname, username, email, role, is_active, created_at
+    `;
+
+    const { rows } = await query(sql, [
+      supabaseUserId || null,
       fullname,
       username,
       email,
-      role: selectedRole,
-      createdAt: new Date().toISOString(),
-    };
-
-    usersStore.push(newUser);
+      pinCode || null,
+      selectedRole,
+    ]);
 
     return res.status(201).json({
       success: true,
       message: `Account created successfully for ${fullname}`,
-      data: newUser,
+      data: rows[0],
     });
   } catch (error) {
+    console.error('Error registering user:', error);
     return res.status(500).json({
       success: false,
       message: 'User registration failed',

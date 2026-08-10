@@ -1,39 +1,64 @@
 import { Router } from 'express';
-import { initialOrders } from '../data/initialOrders.js';
+import { query } from '../config/db.js';
 
 const router = Router();
 
-// GET /api/sales/summary - Get sales summary analytics
-router.get('/sales/summary', (req, res) => {
+// GET /api/sales/summary - Get sales summary analytics from database
+router.get('/sales/summary', async (req, res) => {
   try {
-    const totalOrdersCount = initialOrders.length;
-    const totalGrossRevenue = initialOrders.reduce((acc, o) => acc + o.total, 0);
-    const totalSubtotal = initialOrders.reduce((acc, o) => acc + o.subtotal, 0);
-    const totalVat = initialOrders.reduce((acc, o) => acc + o.vat, 0);
+    const summarySql = `
+      SELECT 
+        COUNT(id)::int AS "totalOrders",
+        COALESCE(SUM(total_amount), 0)::float AS "grossRevenue",
+        COALESCE(SUM(subtotal), 0)::float AS "subtotalRevenue",
+        COALESCE(SUM(tax), 0)::float AS "vatCollected",
+        COALESCE(AVG(total_amount), 0)::float AS "averageOrderValue"
+      FROM orders
+      WHERE order_status != 'cancelled'
+    `;
+    const summaryRes = await query(summarySql);
+    const summary = summaryRes.rows[0];
 
-    const paymentMethodsBreakdown = {};
-    initialOrders.forEach((o) => {
-      const pm = o.paymentMethod || 'Cash';
-      paymentMethodsBreakdown[pm] = (paymentMethodsBreakdown[pm] || 0) + o.total;
+    const paymentSql = `
+      SELECT payment_method, COALESCE(SUM(total_amount), 0)::float AS total
+      FROM orders
+      WHERE order_status != 'cancelled'
+      GROUP BY payment_method
+    `;
+    const paymentRes = await query(paymentSql);
+    const paymentMethods = {};
+    paymentRes.rows.forEach((r) => {
+      paymentMethods[r.payment_method || 'cash'] = r.total;
     });
+
+    const topDishesSql = `
+      SELECT m.name, 
+             SUM(oi.quantity)::int AS "quantitySold", 
+             SUM(oi.subtotal)::float AS "revenue"
+      FROM order_items oi
+      JOIN menu_items m ON oi.menu_item_id = m.id
+      JOIN orders o ON oi.order_id = o.id
+      WHERE o.order_status != 'cancelled'
+      GROUP BY m.id, m.name
+      ORDER BY "quantitySold" DESC
+      LIMIT 5
+    `;
+    const topDishesRes = await query(topDishesSql);
 
     return res.status(200).json({
       success: true,
       data: {
-        totalOrders: totalOrdersCount,
-        grossRevenue: totalGrossRevenue,
-        subtotalRevenue: totalSubtotal,
-        vatCollected: totalVat,
-        averageOrderValue: Math.round(totalGrossRevenue / (totalOrdersCount || 1)),
-        paymentMethods: paymentMethodsBreakdown,
-        topDishes: [
-          { name: "Seafood Bilao Feast", quantitySold: 28, revenue: 67200 },
-          { name: "Garlic Butter Crab Bucket", quantitySold: 22, revenue: 55000 },
-          { name: "Spicy Cajun Shrimp", quantitySold: 35, revenue: 42000 }
-        ]
+        totalOrders: summary.totalOrders,
+        grossRevenue: summary.grossRevenue,
+        subtotalRevenue: summary.subtotalRevenue,
+        vatCollected: summary.vatCollected,
+        averageOrderValue: Math.round(summary.averageOrderValue),
+        paymentMethods,
+        topDishes: topDishesRes.rows,
       },
     });
   } catch (error) {
+    console.error('Error generating sales summary:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to generate sales summary',
@@ -42,24 +67,29 @@ router.get('/sales/summary', (req, res) => {
   }
 });
 
-// GET /api/sales/transactions - Get list of sales ledger transactions
-router.get('/sales/transactions', (req, res) => {
+// GET /api/sales/transactions - Get list of transactions ledger from database
+router.get('/sales/transactions', async (req, res) => {
   try {
-    const transactions = initialOrders.map((o) => ({
-      transactionId: `TXN-${o.id}`,
-      orderId: o.id,
-      date: o.createdAt,
-      type: o.type,
-      paymentMethod: o.paymentMethod,
-      totalAmount: o.total,
-    }));
+    const sql = `
+      SELECT id AS "orderId", 
+             order_number AS "transactionId", 
+             created_at AS "date", 
+             order_type AS "type", 
+             payment_method AS "paymentMethod", 
+             total_amount AS "totalAmount",
+             order_status AS "status"
+      FROM orders
+      ORDER BY created_at DESC
+    `;
+    const { rows } = await query(sql);
 
     return res.status(200).json({
       success: true,
-      count: transactions.length,
-      data: transactions,
+      count: rows.length,
+      data: rows,
     });
   } catch (error) {
+    console.error('Error fetching transactions:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to retrieve transactions ledger',
