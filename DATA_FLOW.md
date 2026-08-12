@@ -12,6 +12,8 @@ The application uses a decoupled hybrid cloud architecture:
 - **GCP Cloud Run**: Hosts the Express.js Node.js REST API server handling all application business logic and authorization middleware.
 - **GCP Cloud SQL (PostgreSQL)**: Production relational database storing all domain data (`employees`, `customers`, `orders`, `order_items`, `menu_items`, `tables`, `assistant_calls`).
 
+![System Architecture Data Flow Diagram](/home/ohmyiu/.gemini/antigravity-ide/brain/c4a06497-cb16-4ad9-a8f1-281286db74d0/architecture_data_flow_diagram_1786203352580.png)
+
 ```mermaid
 graph TD
     Client["React 19 Frontend App\n(POS, KDS, Assistant, Rider, Storefront)"]
@@ -168,3 +170,69 @@ SUPABASE_ANON_KEY=sb_publishable_mSRd5dUpuEeF0OcFHdSAKg_13Ay72-K
 DATABASE_URL=postgresql://postgres:PASSWORD@CLOUD_SQL_IP:5432/seafudz_db
 NODE_ENV=production
 ```
+
+---
+
+## 📝 5. Prompts Used for Generating Mermaid Diagrams
+
+You can copy and reuse these exact prompts in ChatGPT, Claude, DeepSeek, or Mermaid Live Editor (`mermaid.live`):
+
+### Prompt 1: System Topology Architecture Graph
+```text
+Create a Mermaid graph TD diagram for a hybrid architecture:
+- React 19 Frontend App
+- Supabase Auth (Identity Provider for auth.users)
+- GCP Cloud Run Express API Server (Middleware for JWT Verification)
+- GCP Cloud SQL PostgreSQL (Database Instance for seafudz-db)
+Show the numbered request/response arrows for auth, JWT verification, database queries, and JSON responses.
+```
+
+### Prompt 2: Supabase Auth Verification Sequence Diagram
+```text
+Create a Mermaid sequenceDiagram showing authentication verification:
+Participants: React Frontend, Supabase Auth, GCP Express Backend, GCP Cloud SQL DB.
+Flow:
+1. React Frontend calls signInWithPassword on Supabase Auth.
+2. Supabase Auth returns access_token JWT and user ID.
+3. React Frontend sends HTTP GET to GCP Express Backend with Authorization: Bearer JWT.
+4. GCP Backend validates JWT with Supabase Auth (supabase.auth.getUser).
+5. GCP Backend queries GCP Cloud SQL employees table filtering by supabase_user_id.
+6. GCP Cloud SQL returns employee profile.
+7. GCP Backend responds to React Frontend with User JSON profile.
+```
+
+### Prompt 3: Floor Assistant Table Payment Flow Sequence Diagram
+```text
+Create a Mermaid sequenceDiagram for table bill settlement:
+Participants: Dining Guest (Table 3), Floor Assistant Portal, GCP Cloud Run API, GCP Cloud SQL DB.
+Flow:
+1. Guest requests bill from Floor Assistant.
+2. Assistant creates 'Request Bill' call in assistant_calls table via GCP API.
+3. Assistant fetches active order bill details for Table 3.
+4. Guest hands Cash / GCash / Card payment to Assistant at the table.
+5. Assistant submits payment to GCP API with payment_method and assistant_id.
+6. GCP API updates orders (payment_status='Paid', status='Completed', assistant_id), resolves assistant_calls, and marks tables status='Available'.
+7. GCP API returns confirmation and triggers receipt printing.
+```
+
+### Prompt 4: Database ERD Schema Diagram
+```text
+Create a Mermaid erDiagram for a restaurant POS PostgreSQL database:
+Entities:
+- EMPLOYEES (id, supabase_user_id, fullname, role, pin_code)
+- CUSTOMERS (id, supabase_user_id, fullname, delivery_address, loyalty_points)
+- CATEGORIES (id, name, description)
+- MENU_ITEMS (id, name, price, category_id)
+- TABLES (id, name, seats, section, status)
+- ORDERS (id, table_id, customer_id, cashier_id, assistant_id, rider_id, total, status)
+- ORDER_ITEMS (id, order_id, menu_item_id, snapshot_item_name, unit_price, quantity)
+- ASSISTANT_CALLS (id, table_id, assistant_id, type, status)
+Relationships: EMPLOYEES to ORDERS, CUSTOMERS to ORDERS, TABLES to ORDERS, CATEGORIES to MENU_ITEMS, MENU_ITEMS to ORDER_ITEMS, ORDERS to ORDER_ITEMS, TABLES to ASSISTANT_CALLS, EMPLOYEES to ASSISTANT_CALLS.
+```
+
+### Prompt 5: AI Image Generation Prompt (for Midjourney / Imagen 3 / DALL-E)
+```text
+A clean, modern, professional software architecture data flow diagram for a restaurant POS system. High resolution vector style layout on dark slate background. Top container represents React 19 Frontend Client App with icons for POS Register, Kitchen KDS, Floor Assistant, Rider, and Online Store. Left container represents Supabase Auth Service handling user login and issuing JWT bearer tokens. Right container represents GCP Cloud Run Serverless Express API Server verifying JWT tokens and executing REST API business logic. Bottom container represents GCP Cloud SQL PostgreSQL database storing tables for employees, customers, orders, menu items, restaurant tables, and assistant calls. Clear glowing directional arrows showing the 5-step data flow sequence with readable labels and sharp typography.
+```
+
+

@@ -8,7 +8,7 @@ router.get('/orders', async (req, res) => {
   try {
     const { status, type, limit } = req.query;
     let sql = `
-      SELECT o.*, t.table_number,
+      SELECT o.*, t.name AS table_name,
              COALESCE(
                json_agg(
                  json_build_object(
@@ -16,9 +16,9 @@ router.get('/orders', async (req, res) => {
                    'menu_item_id', oi.menu_item_id,
                    'quantity', oi.quantity,
                    'unit_price', oi.unit_price,
-                   'subtotal', oi.subtotal,
-                   'notes', oi.item_notes,
-                   'name', m.name
+                   'subtotal', (oi.unit_price * oi.quantity),
+                   'notes', oi.notes,
+                   'name', oi.snapshot_item_name
                  )
                ) FILTER (WHERE oi.id IS NOT NULL), '[]'
              ) AS "items"
@@ -32,16 +32,16 @@ router.get('/orders', async (req, res) => {
     let paramIndex = 1;
 
     if (status) {
-      sql += ` AND LOWER(o.order_status) = LOWER($${paramIndex++})`;
+      sql += ` AND LOWER(o.status) = LOWER($${paramIndex++})`;
       params.push(status);
     }
 
     if (type) {
-      sql += ` AND LOWER(o.order_type) = LOWER($${paramIndex++})`;
+      sql += ` AND LOWER(o.type) = LOWER($${paramIndex++})`;
       params.push(type);
     }
 
-    sql += ` GROUP BY o.id, t.table_number ORDER BY o.created_at DESC`;
+    sql += ` GROUP BY o.id, t.name ORDER BY o.created_at DESC`;
 
     if (limit) {
       sql += ` LIMIT $${paramIndex++}`;
@@ -70,7 +70,7 @@ router.get('/orders/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const sql = `
-      SELECT o.*, t.table_number,
+      SELECT o.*, t.name AS table_name,
              COALESCE(
                json_agg(
                  json_build_object(
@@ -78,9 +78,9 @@ router.get('/orders/:id', async (req, res) => {
                    'menu_item_id', oi.menu_item_id,
                    'quantity', oi.quantity,
                    'unit_price', oi.unit_price,
-                   'subtotal', oi.subtotal,
-                   'notes', oi.item_notes,
-                   'name', m.name
+                   'subtotal', (oi.unit_price * oi.quantity),
+                   'notes', oi.notes,
+                   'name', oi.snapshot_item_name
                  )
                ) FILTER (WHERE oi.id IS NOT NULL), '[]'
              ) AS "items"
@@ -88,8 +88,8 @@ router.get('/orders/:id', async (req, res) => {
       LEFT JOIN tables t ON o.table_id = t.id
       LEFT JOIN order_items oi ON o.id = oi.order_id
       LEFT JOIN menu_items m ON oi.menu_item_id = m.id
-      WHERE o.id = $1 OR o.order_number = $1
-      GROUP BY o.id, t.table_number
+      WHERE o.id = $1
+      GROUP BY o.id, t.name
     `;
     const { rows } = await query(sql, [id]);
 
@@ -142,8 +142,8 @@ router.post('/orders', async (req, res) => {
 
     const orderSql = `
       INSERT INTO orders (
-        order_number, table_id, order_type, payment_method,
-        payment_status, order_status, subtotal, tax, total_amount, notes
+        id, table_id, type, payment_method,
+        payment_status, status, subtotal, vat, total, notes
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
     `;
@@ -151,10 +151,10 @@ router.post('/orders', async (req, res) => {
     const orderRes = await client.query(orderSql, [
       orderNumber,
       tableId || null,
-      type || 'dine_in',
-      paymentMethod || 'cash',
-      'paid',
-      'pending',
+      type || 'Take Out',
+      paymentMethod || 'Cash',
+      'Paid',
+      'Pending',
       subtotal,
       tax,
       totalAmount,

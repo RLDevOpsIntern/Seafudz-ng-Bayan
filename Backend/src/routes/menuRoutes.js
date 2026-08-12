@@ -112,7 +112,7 @@ router.get('/categories', async (req, res) => {
       FROM categories c
       LEFT JOIN menu_items m ON c.id = m.category_id
       GROUP BY c.id, c.name
-      ORDER BY c.display_order ASC, c.name ASC
+      ORDER BY c.id ASC
     `;
     const { rows } = await query(sql);
 
