@@ -6,20 +6,23 @@ import { getDbPool } from '../config/db.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function runMigrations() {
+export async function runMigrations() {
   console.log('=================================================');
   console.log('📦 Seafudz ng Bayan - Running Database Migrations');
   console.log('-------------------------------------------------');
 
   let pool;
+  let client;
+
   try {
     pool = await getDbPool();
+    client = await pool.connect();
   } catch (err) {
-    console.error('❌ Failed to connect to database pool:', err.message);
-    process.exit(1);
+    console.warn(`⚠️ Database connection unavailable (${err.message}).`);
+    console.warn(`👉 Skipping build-time migration. Migrations will run automatically when server connects to PostgreSQL.`);
+    console.log('=================================================');
+    return;
   }
-
-  const client = await pool.connect();
 
   try {
     // 1. Ensure schema_migrations tracking table exists
