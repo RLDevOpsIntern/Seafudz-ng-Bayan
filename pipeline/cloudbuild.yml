@@ -9,25 +9,25 @@ steps:
     args:
       - 'build'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/seafudz-backend:$COMMIT_SHA'
+      - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/seafudz-backend:$COMMIT_SHA'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/seafudz-backend:latest'
+      - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/seafudz-backend:latest'
       - '.'
 
   # -------------------------------------------------------------------------
-  # Step 2: Push Backend Image to Google Container Registry
+  # Step 2: Push Backend Image to GCP Artifact Registry
   # -------------------------------------------------------------------------
   - name: 'gcr.io/cloud-builders/docker'
     id: 'push-backend-image'
     args:
       - 'push'
-      - 'gcr.io/$PROJECT_ID/seafudz-backend:$COMMIT_SHA'
+      - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/seafudz-backend:$COMMIT_SHA'
 
   - name: 'gcr.io/cloud-builders/docker'
     id: 'push-backend-image-latest'
     args:
       - 'push'
-      - 'gcr.io/$PROJECT_ID/seafudz-backend:latest'
+      - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/seafudz-backend:latest'
 
   # -------------------------------------------------------------------------
   # Step 3: Run Database Migrations on GCP Cloud SQL
@@ -51,7 +51,7 @@ steps:
       - 'deploy'
       - 'seafudz-backend'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/seafudz-backend:$COMMIT_SHA'
+      - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/seafudz-backend:$COMMIT_SHA'
       - '--region'
       - 'asia-southeast1'
       - '--platform'
@@ -84,10 +84,10 @@ steps:
       - '--project'
       - '$PROJECT_ID'
 
-# Store artifact images in Google Container Registry
+# Store artifact images in GCP Artifact Registry
 images:
-  - 'gcr.io/$PROJECT_ID/seafudz-backend:$COMMIT_SHA'
-  - 'gcr.io/$PROJECT_ID/seafudz-backend:latest'
+  - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/seafudz-backend:$COMMIT_SHA'
+  - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/seafudz-backend:latest'
 
 # Pipeline execution configuration
 timeout: '1200s'
