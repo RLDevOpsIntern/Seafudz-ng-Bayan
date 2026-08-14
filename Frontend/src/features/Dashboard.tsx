@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import AccordionGallery from '../components/AccordionGallery';
 import ClickStack from '../components/ClickStack';
-import logo from '../assets/logoseafudsngbayan.png';
+import ScrollBubbles from '../components/ScrollBubbles';
+
 import seafoodBilaoImg from '../assets/seafood_bilao.png';
 import seafoodCajunImg from '../assets/seafood_cajun.png';
 import spicyShrimpImg from '../assets/spicy_shrimp.png';
@@ -94,27 +95,41 @@ const Dashboard: React.FC = () => {
   const [selectedItem, setSelectedItem] = useState<ArchivedItem | null>(null);
   const [isArchiveVisible, setIsArchiveVisible] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [activeNav, setActiveNav] = useState<'home' | 'story' | 'archive'>('home');
+  const [activeNav, setActiveNav] = useState<'home' | 'story' | 'archive' | 'faq'>('home');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const archiveRef = useRef<HTMLDivElement>(null);
+  const isNavClickRef = useRef(false);
 
   useEffect(() => {
+    let ticking = false;
+
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 40);
+      if (!ticking) {
+        requestAnimationFrame(() => {
+          setIsScrolled(window.scrollY > 40);
 
-      // Auto update active link based on scroll position
-      const storyEl = document.getElementById('our-story');
-      const archiveEl = document.getElementById('seafood-archive');
+          if (!isNavClickRef.current) {
+            const storyEl = document.getElementById('our-story');
+            const archiveEl = document.getElementById('seafood-archive');
+            const faqEl = document.getElementById('faq-section');
 
-      if (archiveEl && archiveEl.getBoundingClientRect().top <= 300) {
-        setActiveNav('archive');
-      } else if (storyEl && storyEl.getBoundingClientRect().top <= 300) {
-        setActiveNav('story');
-      } else {
-        setActiveNav('home');
+            if (faqEl && faqEl.getBoundingClientRect().top <= 350) {
+              setActiveNav('faq');
+            } else if (archiveEl && archiveEl.getBoundingClientRect().top <= 350) {
+              setActiveNav('archive');
+            } else if (storyEl && storyEl.getBoundingClientRect().top <= 350) {
+              setActiveNav('story');
+            } else {
+              setActiveNav('home');
+            }
+          }
+          ticking = false;
+        });
+        ticking = true;
       }
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
@@ -138,116 +153,248 @@ const Dashboard: React.FC = () => {
   const scrollToHome = (e: React.MouseEvent) => {
     e.preventDefault();
     setActiveNav('home');
+    setIsMobileMenuOpen(false);
+    isNavClickRef.current = true;
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => { isNavClickRef.current = false; }, 800);
   };
 
   const scrollToStory = (e: React.MouseEvent) => {
     e.preventDefault();
     setActiveNav('story');
+    setIsMobileMenuOpen(false);
+    isNavClickRef.current = true;
     document.getElementById('our-story')?.scrollIntoView({ behavior: 'smooth' });
+    setTimeout(() => { isNavClickRef.current = false; }, 800);
   };
 
   const scrollToArchive = (e: React.MouseEvent) => {
     e.preventDefault();
     setActiveNav('archive');
+    setIsMobileMenuOpen(false);
+    isNavClickRef.current = true;
     document.getElementById('seafood-archive')?.scrollIntoView({ behavior: 'smooth' });
+    setTimeout(() => { isNavClickRef.current = false; }, 800);
+  };
+
+  const scrollToFaq = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setActiveNav('faq');
+    setIsMobileMenuOpen(false);
+    isNavClickRef.current = true;
+    document.getElementById('faq-section')?.scrollIntoView({ behavior: 'smooth' });
+    setTimeout(() => { isNavClickRef.current = false; }, 800);
   };
 
   return (
-    <div className="font-sans text-neutral-800 bg-[#faf9f6] min-h-screen">
-      {/* Dynamic Centered Topbar (Transparent at top, Floating White Pill on Scroll) */}
-      <header className="fixed top-5 inset-x-0 z-50 flex justify-center px-4 pointer-events-none transition-all duration-300">
-        <nav className={`pointer-events-auto flex items-center justify-between w-full max-w-4xl px-4 py-2.5 rounded-2xl transition-all duration-300 ${
-          isScrolled
-            ? 'bg-white border border-neutral-200/90 shadow-[0_10px_30px_rgba(0,0,0,0.12)]'
-            : 'bg-transparent border border-transparent'
-        }`}>
+    <div className="font-sans text-neutral-800 bg-[#faf9f6] min-h-screen relative">
+      {/* Scroll-Triggered Floating Ocean Bubbles */}
+      <ScrollBubbles />
+
+      {/* Dynamic Adaptive Topbar */}
+      <header className="fixed top-4 inset-x-0 z-50 flex flex-col items-center px-4 pointer-events-none transition-all duration-300">
+        <nav className={`pointer-events-auto flex items-center justify-between w-full max-w-5xl px-4 sm:px-5 py-3 rounded-2xl transition-all duration-500 ${!isScrolled
+          ? 'bg-black/25 backdrop-blur-md border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.2)]'
+          : activeNav === 'story' || activeNav === 'archive' || activeNav === 'faq'
+            ? 'bg-gradient-to-r from-black/70 via-[#001e28]/80 to-black/70 backdrop-blur-md border border-white/20 shadow-[0_10px_30px_rgba(0,0,0,0.4)]'
+            : 'bg-white/90 backdrop-blur-md border border-neutral-200/90 shadow-[0_10px_30px_rgba(0,0,0,0.12)]'
+          }`}>
           {/* Logo */}
           <Link to="/" onClick={scrollToHome} className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-xl bg-orange-600 flex items-center justify-center text-white font-bold text-lg shadow-sm group-hover:scale-105 transition-transform">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white font-bold text-sm shadow-md group-hover:scale-105 transition-transform">
               S
             </div>
-            <span className={`text-sm font-bold tracking-tight font-serif transition-colors ${
-              isScrolled ? 'text-neutral-900' : 'text-white drop-shadow-md'
-            }`}>
+            <span className={`text-sm font-bold tracking-tight font-serif transition-colors duration-300 ${!isScrolled || activeNav === 'story' || activeNav === 'archive' || activeNav === 'faq' ? 'text-white drop-shadow-md' : 'text-neutral-900'
+              }`}>
               Seafudz Ng Bayan
             </span>
           </Link>
 
-          {/* Centered Nav Links */}
-          <div className={`hidden md:flex items-center gap-7 px-5 py-1.5 rounded-full transition-all duration-300 ${
-            isScrolled ? 'bg-neutral-100/70 border border-neutral-200/50' : 'bg-transparent'
-          }`}>
-            <a 
-              href="#" 
-              onClick={scrollToHome} 
-              className={`relative text-xs font-semibold py-1 transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${
-                activeNav === 'home'
-                  ? 'text-orange-500 font-bold'
-                  : isScrolled 
-                    ? 'text-neutral-600 hover:text-orange-600' 
-                    : 'text-neutral-200 hover:text-orange-400 drop-shadow-md'
-              }`}
+          {/* Centered Nav Links (Desktop) */}
+          <div className={`hidden md:flex items-center gap-7 px-5 py-1.5 rounded-xl transition-all duration-300 ${!isScrolled
+            ? 'bg-white/10 backdrop-blur-sm border border-white/20'
+            : activeNav === 'story' || activeNav === 'archive' || activeNav === 'faq'
+              ? 'bg-white/10 backdrop-blur-md border border-white/15'
+              : 'bg-neutral-100/80 border border-neutral-200/50'
+            }`}>
+            <a
+              href="#"
+              onClick={scrollToHome}
+              className={`relative text-xs font-bold py-1 transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${activeNav === 'home'
+                ? 'text-orange-500 font-extrabold'
+                : !isScrolled || activeNav === 'story' || activeNav === 'archive' || activeNav === 'faq'
+                  ? 'text-neutral-200 hover:text-white'
+                  : 'text-neutral-600 hover:text-orange-600'
+                }`}
             >
               Home
-              <span className={`absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500 rounded-full transition-all duration-300 ease-out ${
-                activeNav === 'home' ? 'w-full opacity-100' : 'w-0 opacity-0'
-              }`} />
+              <span className={`absolute -bottom-1 left-0 right-0 h-0.5 bg-orange-500 rounded-full transition-all duration-300 ease-out ${activeNav === 'home' ? 'w-full opacity-100' : 'w-0 opacity-0'
+                }`} />
             </a>
-            <a 
-              href="#our-story" 
-              onClick={scrollToStory} 
-              className={`relative text-xs font-semibold py-1 transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${
-                activeNav === 'story'
-                  ? 'text-orange-500 font-bold'
-                  : isScrolled 
-                    ? 'text-neutral-600 hover:text-orange-600' 
-                    : 'text-neutral-200 hover:text-orange-400 drop-shadow-md'
-              }`}
+            <a
+              href="#our-story"
+              onClick={scrollToStory}
+              className={`relative text-xs font-bold py-1 transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${activeNav === 'story'
+                ? 'text-[#00b4d8] font-extrabold'
+                : !isScrolled || activeNav === 'archive' || activeNav === 'faq'
+                  ? 'text-neutral-200 hover:text-white'
+                  : 'text-neutral-600 hover:text-[#00b4d8]'
+                }`}
             >
               Our Story
-              <span className={`absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500 rounded-full transition-all duration-300 ease-out ${
-                activeNav === 'story' ? 'w-full opacity-100' : 'w-0 opacity-0'
-              }`} />
+              <span className={`absolute -bottom-1 left-0 right-0 h-0.5 bg-[#00b4d8] rounded-full transition-all duration-300 ease-out ${activeNav === 'story' ? 'w-full opacity-100' : 'w-0 opacity-0'
+                }`} />
             </a>
-            <a 
-              href="#seafood-archive" 
-              onClick={scrollToArchive} 
-              className={`relative text-xs font-semibold py-1 transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${
-                activeNav === 'archive'
-                  ? 'text-orange-500 font-bold'
-                  : isScrolled 
-                    ? 'text-neutral-600 hover:text-orange-600' 
-                    : 'text-neutral-200 hover:text-orange-400 drop-shadow-md'
-              }`}
+            <a
+              href="#seafood-archive"
+              onClick={scrollToArchive}
+              className={`relative text-xs font-bold py-1 transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${activeNav === 'archive'
+                ? 'text-[#00b4d8] font-extrabold'
+                : !isScrolled || activeNav === 'story' || activeNav === 'faq'
+                  ? 'text-neutral-200 hover:text-white'
+                  : 'text-neutral-600 hover:text-[#00b4d8]'
+                }`}
             >
               Archive
-              <span className={`absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500 rounded-full transition-all duration-300 ease-out ${
-                activeNav === 'archive' ? 'w-full opacity-100' : 'w-0 opacity-0'
-              }`} />
+              <span className={`absolute -bottom-1 left-0 right-0 h-0.5 bg-[#00b4d8] rounded-full transition-all duration-300 ease-out ${activeNav === 'archive' ? 'w-full opacity-100' : 'w-0 opacity-0'
+                }`} />
+            </a>
+            <a
+              href="#faq-section"
+              onClick={scrollToFaq}
+              className={`relative text-xs font-bold py-1 transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${activeNav === 'faq'
+                ? 'text-[#00b4d8] font-extrabold'
+                : !isScrolled || activeNav === 'story' || activeNav === 'archive'
+                  ? 'text-neutral-200 hover:text-white'
+                  : 'text-neutral-600 hover:text-[#00b4d8]'
+                }`}
+            >
+              FAQ
+              <span className={`absolute -bottom-1 left-0 right-0 h-0.5 bg-[#00b4d8] rounded-full transition-all duration-300 ease-out ${activeNav === 'faq' ? 'w-full opacity-100' : 'w-0 opacity-0'
+                }`} />
             </a>
           </div>
 
-          {/* Action Button */}
-          <Link 
-            to="/login" 
-            className={`flex items-center gap-2 text-white text-xs font-semibold px-4.5 py-2 rounded-xl transition-all shadow-md hover:scale-102 active:scale-98 ${
-              isScrolled ? 'bg-neutral-900 hover:bg-orange-600' : 'bg-orange-600 hover:bg-orange-500'
-            }`}
-          >
-            <span>Login / Register</span>
-          </Link>
+          {/* Action Button (Desktop only) */}
+          <div className="flex items-center gap-2">
+            <Link
+              to="/login"
+              className={`hidden md:flex items-center gap-2 text-white text-xs font-bold px-5 py-2.5 rounded-xl transition-all duration-300 shadow-md hover:scale-105 active:scale-95 ${activeNav === 'story' || activeNav === 'archive' || activeNav === 'faq'
+                ? 'bg-gradient-to-r from-[#00b4d8] to-[#0077b6] hover:from-[#0077b6] hover:to-[#00b4d8] shadow-[0_4px_20px_rgba(0,180,216,0.4)]'
+                : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 shadow-orange-500/25'
+                }`}
+            >
+              <span>Login / Register</span>
+            </Link>
+
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className={`p-2 focus:outline-none rounded-xl border transition-all cursor-pointer md:hidden ${!isScrolled || activeNav === 'story' || activeNav === 'archive' || activeNav === 'faq'
+                ? 'text-white bg-white/20 border-white/30 hover:bg-white/30'
+                : 'text-neutral-800 bg-neutral-100 border-neutral-300 hover:bg-neutral-200'
+                }`}
+              aria-label="Toggle mobile navigation menu"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {isMobileMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
+          </div>
         </nav>
+
+        {/* Mobile Smooth-Sliding Navigation Panel */}
+        <div
+          className={`pointer-events-auto md:hidden w-full max-w-5xl transition-all duration-300 ease-in-out overflow-hidden ${isMobileMenuOpen
+            ? 'max-h-96 opacity-100 mt-2 py-4 px-4 translate-y-0'
+            : 'max-h-0 opacity-0 mt-0 py-0 px-4 -translate-y-2 pointer-events-none'
+            } rounded-2xl text-left border ${!isScrolled
+              ? 'bg-black/25 backdrop-blur-md border-white/20 text-white shadow-[0_8px_32px_rgba(0,0,0,0.2)]'
+              : activeNav === 'story' || activeNav === 'archive' || activeNav === 'faq'
+                ? 'bg-gradient-to-r from-black/70 via-[#001e28]/80 to-black/70 backdrop-blur-md border-white/20 text-white shadow-[0_10px_30px_rgba(0,0,0,0.4)]'
+                : 'bg-white/90 backdrop-blur-md border-neutral-200/90 text-neutral-900 shadow-[0_10px_30px_rgba(0,0,0,0.12)]'
+            }`}
+        >
+          <div className="space-y-2 font-sans">
+            <a
+              href="#"
+              onClick={scrollToHome}
+              className={`block px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${activeNav === 'home'
+                ? 'bg-orange-500/20 text-orange-500 border border-orange-500/30 font-extrabold'
+                : !isScrolled || activeNav === 'story' || activeNav === 'archive' || activeNav === 'faq'
+                  ? 'text-white/90 hover:bg-white/10'
+                  : 'text-neutral-700 hover:bg-neutral-100'
+                }`}
+            >
+              Home
+            </a>
+            <a
+              href="#our-story"
+              onClick={scrollToStory}
+              className={`block px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${activeNav === 'story'
+                ? 'bg-[#00b4d8]/20 text-[#00b4d8] border border-[#00b4d8]/30 font-extrabold'
+                : !isScrolled || activeNav === 'archive' || activeNav === 'faq'
+                  ? 'text-white/90 hover:bg-white/10'
+                  : 'text-neutral-700 hover:bg-neutral-100'
+                }`}
+            >
+              Our Story
+            </a>
+            <a
+              href="#seafood-archive"
+              onClick={scrollToArchive}
+              className={`block px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${activeNav === 'archive'
+                ? 'bg-[#00b4d8]/20 text-[#00b4d8] border border-[#00b4d8]/30 font-extrabold'
+                : !isScrolled || activeNav === 'story' || activeNav === 'faq'
+                  ? 'text-white/90 hover:bg-white/10'
+                  : 'text-neutral-700 hover:bg-neutral-100'
+                }`}
+            >
+              Archive
+            </a>
+            <a
+              href="#faq-section"
+              onClick={scrollToFaq}
+              className={`block px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${activeNav === 'faq'
+                ? 'bg-[#00b4d8]/20 text-[#00b4d8] border border-[#00b4d8]/30 font-extrabold'
+                : !isScrolled || activeNav === 'story' || activeNav === 'archive'
+                  ? 'text-white/90 hover:bg-white/10'
+                  : 'text-neutral-700 hover:bg-neutral-100'
+                }`}
+            >
+              FAQ
+            </a>
+            <div className={`pt-2 border-t ${!isScrolled || activeNav === 'story' || activeNav === 'archive' || activeNav === 'faq' ? 'border-white/10' : 'border-neutral-200'}`}>
+              <Link
+                to="/login"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`block text-center text-white text-xs font-bold py-2.5 rounded-xl shadow-md transition-all ${activeNav === 'story' || activeNav === 'archive' || activeNav === 'faq'
+                  ? 'bg-gradient-to-r from-[#00b4d8] to-[#0077b6] hover:from-[#0077b6] hover:to-[#00b4d8]'
+                  : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700'
+                  }`}
+              >
+                Login / Register
+              </Link>
+            </div>
+          </div>
+        </div>
       </header>
 
-      {/* Hero Section */}
-      <div 
-        className="min-h-[70vh] bg-cover bg-center bg-no-repeat flex items-center justify-center text-center text-white p-8 relative" 
-        style={{ 
-          backgroundImage: `linear-gradient(rgba(15, 15, 15, 0.75), rgba(15, 15, 15, 0.85)), url(${logo})` 
-        }}
-      >
-        <div className="max-w-[750px] animate-fade-in-up">
+      {/* Hero Section with WebGL Interactive Ripple Distortion */}
+      <div className="min-h-[75vh] flex items-center justify-center text-center text-white p-8 relative overflow-hidden bg-[#001e28]">
+        {/* Static Background Image */}
+        <div className="absolute inset-0 z-0">
+          <img src={seafoodBilaoImg} alt="Seafood Bilao Feast" className="w-full h-full object-cover opacity-60" />
+        </div>
+
+        {/* Ambient Overlay to ensure text readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/60 pointer-events-none z-10" />
+
+        {/* Hero Content */}
+        <div className="max-w-[750px] animate-fade-in-up relative z-20">
           <h1 className="text-3xl md:text-5xl font-extrabold mb-4 tracking-tight leading-tight">Welcome to Seafudz Ng Bayan</h1>
           <p className="text-base md:text-lg font-normal tracking-wide mb-8 text-neutral-100">Fresh Seafood • Dine-in • Take-out • Delivery</p>
           <div className="flex gap-4 justify-center flex-wrap">
@@ -266,7 +413,7 @@ const Dashboard: React.FC = () => {
         {/* Subtle background glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-r from-[#0a9396]/20 to-[#94d2bd]/30 blur-3xl rounded-full pointer-events-none -z-10" />
 
-        <div className="max-w-[1200px] mx-auto">
+        <div className="max-w-[1200px] mx-auto relative z-20">
           <span className="text-xs font-semibold tracking-widest text-[#005f73] uppercase mb-2 block">
             The Seafudz Experience
           </span>
@@ -343,64 +490,66 @@ const Dashboard: React.FC = () => {
         </div>
       </section>
 
-      {/* Our Journey & Business Success Story Section (Stack Card 1) */}
-      <section id="our-story" className="py-28 px-6 md:px-[8%] bg-gradient-to-b from-[#e4dec3]/40 via-[#b0d3ce]/40 to-[#0a9396]/90 text-white relative overflow-hidden sticky top-0 z-20">
-        {/* Ambient Radial Spotlight Background */}
-        <div className="absolute top-1/4 -right-20 w-[600px] h-[600px] bg-gradient-to-br from-[#0a9396]/30 via-[#94d2bd]/30 to-transparent blur-[140px] rounded-full pointer-events-none" />
-        <div className="absolute -bottom-20 -left-20 w-[500px] h-[500px] bg-gradient-to-tr from-[#005f73]/40 via-[#0a9396]/20 to-transparent blur-[120px] rounded-full pointer-events-none" />
+      {/* Our Journey & Business Success Story Section (Stack Card 1 - Exact Vivid Sky Blue Theme) */}
+      <section id="our-story" className="py-28 px-6 md:px-[8%] bg-gradient-to-b from-[#00b4d8] via-[#0096c7] to-[#0077b6] text-white relative overflow-hidden sticky top-0 z-20 shadow-[0_-20px_50px_rgba(0,0,0,0.15)] rounded-t-[40px]">
 
-        <div className="max-w-[1250px] mx-auto relative z-10">
+
+        {/* Ambient Radial Spotlight Background */}
+        <div className="absolute top-1/4 -right-20 w-[600px] h-[600px] bg-gradient-to-br from-white/20 via-[#caf0f8]/20 to-transparent blur-[140px] rounded-full pointer-events-none" />
+        <div className="absolute -bottom-20 -left-20 w-[500px] h-[500px] bg-gradient-to-tr from-[#90e0ef]/20 via-[#00b4d8]/20 to-transparent blur-[120px] rounded-full pointer-events-none" />
+
+        <div className="max-w-[1250px] mx-auto relative z-20">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-14 items-center">
             {/* Left Content Column */}
             <div className="lg:col-span-6 space-y-7 text-left">
               {/* Floating Pill Tag */}
-              <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-[#005f73]/30 border border-[#005f73]/40 backdrop-blur-md text-[#005f73] text-xs font-bold tracking-wider uppercase shadow-lg">
-                <span className="w-2 h-2 rounded-full bg-[#005f73] animate-pulse shadow-[0_0_10px_#005f73]" />
+              <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-white/20 border border-white/40 backdrop-blur-md text-white text-xs font-bold tracking-wider uppercase shadow-md">
+                <span className="w-2 h-2 rounded-full bg-white animate-ping" />
                 Our Story & Business Impact
               </div>
 
               {/* Headline */}
-              <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.15] font-serif text-[#002d3c]">
+              <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.15] font-serif text-white">
                 From a Street Stall to <br className="hidden sm:block" />
-                <span className="bg-gradient-to-r from-[#005f73] via-[#0a9396] to-[#002d3c] bg-clip-text text-transparent drop-shadow-sm">
+                <span className="bg-gradient-to-r from-white via-[#caf0f8] to-white bg-clip-text text-transparent drop-shadow-sm">
                   6 Flourishing Branches
                 </span>
               </h2>
 
               {/* Story Narrative */}
-              <p className="text-[#002d3c] text-sm sm:text-base leading-relaxed font-medium">
-                Founded with a deep passion for authentic Filipino culinary traditions, <strong className="text-[#005f73]">Seafudz Ng Bayan</strong> started as a modest neighborhood setup. Driven by our signature butter garlic and Cajun boils, we grew into a multi-branch seafood destination beloved by seafood enthusiasts across the region.
+              <p className="text-white/95 text-sm sm:text-base leading-relaxed font-normal">
+                Founded with a deep passion for authentic Filipino culinary traditions, <strong className="text-[#caf0f8] font-bold">Seafudz Ng Bayan</strong> started as a modest neighborhood setup. Driven by our signature butter garlic and Cajun boils, we grew into a multi-branch seafood destination beloved by seafood enthusiasts across the region.
               </p>
-              
-              <p className="text-[#005f73] text-xs sm:text-sm leading-relaxed border-l-2 border-[#005f73] pl-4 italic font-semibold">
+
+              <p className="text-[#caf0f8] text-xs sm:text-sm leading-relaxed border-l-4 border-white pl-4 italic font-medium bg-black/20 py-3 rounded-r-xl border-t border-b border-r border-white/20 shadow-sm backdrop-blur-md">
                 "By maintaining direct daily partnerships with local coastal fishermen and enforcing zero-compromise freshness, we ensure every bilao serves ocean sweetness straight to your family's table."
               </p>
 
               {/* Glowing Impact Stats Cards */}
               <div className="pt-2 grid grid-cols-3 gap-4">
-                <div className="group bg-white/90 backdrop-blur-xl border border-[#0a9396]/30 p-5 rounded-2xl hover:border-[#005f73] transition-all duration-300 hover:-translate-y-1 shadow-xl">
-                  <span className="text-3xl sm:text-4xl font-extrabold text-[#005f73] font-serif block group-hover:scale-105 transition-transform">
+                <div className="group bg-white/90 backdrop-blur-xl border border-white/70 p-5 rounded-2xl hover:border-white transition-all duration-300 hover:-translate-y-1 shadow-[0_15px_35px_rgba(0,0,0,0.1)]">
+                  <span className="text-3xl sm:text-4xl font-extrabold text-[#0077b6] font-serif block group-hover:scale-105 transition-transform">
                     250K+
                   </span>
-                  <span className="text-[10px] sm:text-[11px] text-[#002d3c] uppercase tracking-widest font-bold block mt-1">
+                  <span className="text-[10px] sm:text-[11px] text-[#03045e] uppercase tracking-widest font-mono font-bold block mt-1">
                     Bilaos Served
                   </span>
                 </div>
 
-                <div className="group bg-white/90 backdrop-blur-xl border border-[#0a9396]/30 p-5 rounded-2xl hover:border-[#005f73] transition-all duration-300 hover:-translate-y-1 shadow-xl">
-                  <span className="text-3xl sm:text-4xl font-extrabold text-[#0a9396] font-serif block group-hover:scale-105 transition-transform">
+                <div className="group bg-white/90 backdrop-blur-xl border border-white/70 p-5 rounded-2xl hover:border-white transition-all duration-300 hover:-translate-y-1 shadow-[0_15px_35px_rgba(0,0,0,0.1)]">
+                  <span className="text-3xl sm:text-4xl font-extrabold text-[#00b4d8] font-serif block group-hover:scale-105 transition-transform">
                     6
                   </span>
-                  <span className="text-[10px] sm:text-[11px] text-[#002d3c] uppercase tracking-widest font-bold block mt-1">
+                  <span className="text-[10px] sm:text-[11px] text-[#03045e] uppercase tracking-widest font-mono font-bold block mt-1">
                     Active Branches
                   </span>
                 </div>
 
-                <div className="group bg-white/90 backdrop-blur-xl border border-[#0a9396]/30 p-5 rounded-2xl hover:border-[#005f73] transition-all duration-300 hover:-translate-y-1 shadow-xl">
-                  <span className="text-3xl sm:text-4xl font-extrabold text-[#005f73] font-serif block group-hover:scale-105 transition-transform">
+                <div className="group bg-white/90 backdrop-blur-xl border border-white/70 p-5 rounded-2xl hover:border-white transition-all duration-300 hover:-translate-y-1 shadow-[0_15px_35px_rgba(0,0,0,0.1)]">
+                  <span className="text-3xl sm:text-4xl font-extrabold text-[#0077b6] font-serif block group-hover:scale-105 transition-transform">
                     50+
                   </span>
-                  <span className="text-[10px] sm:text-[11px] text-[#002d3c] uppercase tracking-widest font-bold block mt-1">
+                  <span className="text-[10px] sm:text-[11px] text-[#03045e] uppercase tracking-widest font-mono font-bold block mt-1">
                     Local Fishermen
                   </span>
                 </div>
@@ -410,65 +559,65 @@ const Dashboard: React.FC = () => {
             {/* Right Interactive Milestone Cards Grid */}
             <div className="lg:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-5 pt-4 lg:pt-0">
               {/* Milestone 1 */}
-              <div className="group bg-white/90 backdrop-blur-xl p-7 rounded-3xl border border-[#0a9396]/30 text-left hover:border-[#005f73] transition-all duration-300 hover:-translate-y-1.5 shadow-xl relative overflow-hidden">
-                <div className="w-10 h-10 rounded-xl bg-[#0a9396]/20 border border-[#0a9396]/30 text-[#005f73] flex items-center justify-center text-xs font-bold font-mono mb-4 group-hover:bg-[#005f73] group-hover:text-white transition-all">
+              <div className="group bg-white/90 backdrop-blur-xl p-7 rounded-3xl border border-white/70 text-left hover:border-white transition-all duration-300 hover:-translate-y-1.5 shadow-[0_15px_35px_rgba(0,0,0,0.1)] relative overflow-hidden">
+                <div className="w-10 h-10 rounded-xl bg-[#00b4d8]/15 border border-[#00b4d8]/30 text-[#0077b6] flex items-center justify-center text-xs font-bold font-mono mb-4 group-hover:bg-[#0077b6] group-hover:text-white transition-all">
                   01
                 </div>
-                <span className="text-[11px] font-mono text-[#005f73] font-bold tracking-widest block mb-1">
+                <span className="text-[11px] font-mono text-[#0077b6] font-bold tracking-widest block mb-1">
                   2021 • THE HUMBLE BEGINNING
                 </span>
-                <h4 className="text-lg font-bold text-[#002d3c] mb-2 group-hover:text-[#0a9396] transition-colors">
+                <h4 className="text-lg font-bold text-[#03045e] mb-2 group-hover:text-[#0077b6] transition-colors font-serif">
                   First Street Stall
                 </h4>
-                <p className="text-xs text-neutral-700 leading-relaxed">
+                <p className="text-xs text-neutral-600 leading-relaxed font-normal">
                   Started in a small neighborhood setup with 1 signature Cajun sauce recipe and a vision to serve affordable fresh seafood.
                 </p>
               </div>
 
               {/* Milestone 2 */}
-              <div className="group bg-white/90 backdrop-blur-xl p-7 rounded-3xl border border-[#0a9396]/30 text-left hover:border-[#005f73] transition-all duration-300 hover:-translate-y-1.5 shadow-xl relative overflow-hidden sm:translate-y-6">
-                <div className="w-10 h-10 rounded-xl bg-[#0a9396]/20 border border-[#0a9396]/30 text-[#0a9396] flex items-center justify-center text-xs font-bold font-mono mb-4 group-hover:bg-[#0a9396] group-hover:text-white transition-all">
+              <div className="group bg-white/90 backdrop-blur-xl p-7 rounded-3xl border border-white/70 text-left hover:border-white transition-all duration-300 hover:-translate-y-1.5 shadow-[0_15px_35px_rgba(0,0,0,0.1)] relative overflow-hidden sm:translate-y-6">
+                <div className="w-10 h-10 rounded-xl bg-[#00b4d8]/15 border border-[#00b4d8]/30 text-[#0096c7] flex items-center justify-center text-xs font-bold font-mono mb-4 group-hover:bg-[#0096c7] group-hover:text-white transition-all">
                   02
                 </div>
-                <span className="text-[11px] font-mono text-[#0a9396] font-bold tracking-widest block mb-1">
+                <span className="text-[11px] font-mono text-[#0096c7] font-bold tracking-widest block mb-1">
                   2022 • EXPANSION
                 </span>
-                <h4 className="text-lg font-bold text-[#002d3c] mb-2 group-hover:text-[#0a9396] transition-colors">
+                <h4 className="text-lg font-bold text-[#03045e] mb-2 group-hover:text-[#0096c7] transition-colors font-serif">
                   Bilao Feast Concept
                 </h4>
-                <p className="text-xs text-neutral-700 leading-relaxed">
+                <p className="text-xs text-neutral-600 leading-relaxed font-normal">
                   Pioneered large family-style bilao seafood platters, expanding rapidly to 3 main branches across the bay area.
                 </p>
               </div>
 
               {/* Milestone 3 */}
-              <div className="group bg-white/90 backdrop-blur-xl p-7 rounded-3xl border border-[#0a9396]/30 text-left hover:border-[#005f73] transition-all duration-300 hover:-translate-y-1.5 shadow-xl relative overflow-hidden">
-                <div className="w-10 h-10 rounded-xl bg-[#0a9396]/20 border border-[#0a9396]/30 text-[#005f73] flex items-center justify-center text-xs font-bold font-mono mb-4 group-hover:bg-[#005f73] group-hover:text-white transition-all">
+              <div className="group bg-white/90 backdrop-blur-xl p-7 rounded-3xl border border-white/70 text-left hover:border-white transition-all duration-300 hover:-translate-y-1.5 shadow-[0_15px_35px_rgba(0,0,0,0.1)] relative overflow-hidden">
+                <div className="w-10 h-10 rounded-xl bg-[#00b4d8]/15 border border-[#00b4d8]/30 text-[#0077b6] flex items-center justify-center text-xs font-bold font-mono mb-4 group-hover:bg-[#0077b6] group-hover:text-white transition-all">
                   03
                 </div>
-                <span className="text-[11px] font-mono text-[#005f73] font-bold tracking-widest block mb-1">
+                <span className="text-[11px] font-mono text-[#0077b6] font-bold tracking-widest block mb-1">
                   2024 • DIGITAL TRANSFORMATION
                 </span>
-                <h4 className="text-lg font-bold text-[#002d3c] mb-2 group-hover:text-[#0a9396] transition-colors">
+                <h4 className="text-lg font-bold text-[#03045e] mb-2 group-hover:text-[#0077b6] transition-colors font-serif">
                   Cloud POS & Express Delivery
                 </h4>
-                <p className="text-xs text-neutral-700 leading-relaxed">
+                <p className="text-xs text-neutral-600 leading-relaxed font-normal">
                   Integrated real-time kitchen tracking & online ordering system, guaranteeing hot delivery within 30 minutes.
                 </p>
               </div>
 
               {/* Milestone 4 */}
-              <div className="group bg-white/90 backdrop-blur-xl p-7 rounded-3xl border border-[#0a9396]/30 text-left hover:border-[#005f73] transition-all duration-300 hover:-translate-y-1.5 shadow-xl relative overflow-hidden sm:translate-y-6">
-                <div className="w-10 h-10 rounded-xl bg-[#0a9396]/20 border border-[#0a9396]/30 text-[#0a9396] flex items-center justify-center text-xs font-bold font-mono mb-4 group-hover:bg-[#0a9396] group-hover:text-white transition-all">
+              <div className="group bg-white/90 backdrop-blur-xl p-7 rounded-3xl border border-white/70 text-left hover:border-white transition-all duration-300 hover:-translate-y-1.5 shadow-[0_15px_35px_rgba(0,0,0,0.1)] relative overflow-hidden sm:translate-y-6">
+                <div className="w-10 h-10 rounded-xl bg-[#00b4d8]/15 border border-[#00b4d8]/30 text-[#0096c7] flex items-center justify-center text-xs font-bold font-mono mb-4 group-hover:bg-[#0096c7] group-hover:text-white transition-all">
                   04
                 </div>
-                <span className="text-[11px] font-mono text-[#0a9396] font-bold tracking-widest block mb-1">
+                <span className="text-[11px] font-mono text-[#0096c7] font-bold tracking-widest block mb-1">
                   TODAY & BEYOND
                 </span>
-                <h4 className="text-lg font-bold text-[#002d3c] mb-2 group-hover:text-[#0a9396] transition-colors">
+                <h4 className="text-lg font-bold text-[#03045e] mb-2 group-hover:text-[#0096c7] transition-colors font-serif">
                   6 Branches & Growing
                 </h4>
-                <p className="text-xs text-neutral-700 leading-relaxed">
+                <p className="text-xs text-neutral-600 leading-relaxed font-normal">
                   Proudly employing local staff and supporting coastal fishing communities with every bilao order.
                 </p>
               </div>
@@ -477,12 +626,13 @@ const Dashboard: React.FC = () => {
         </div>
       </section>
 
-      {/* Seafood Archive Section (Sticky Card 2 - Holds in place while content & attached sections scroll) */}
+      {/* Seafood Archive Section (Sticky Card 2) */}
       <div
         ref={archiveRef}
         id="seafood-archive"
-        className="py-28 px-6 md:px-[8%] bg-gradient-to-b from-[#0a9396] via-[#005f73] to-[#002d3c] text-white relative overflow-hidden sticky top-0 z-30 shadow-[0_-25px_60px_rgba(0,0,0,0.3)] rounded-t-[40px]"
+        className="py-28 px-6 md:px-[8%] bg-[#002d3c] text-white relative overflow-hidden sticky top-0 z-30 shadow-[0_-25px_60px_rgba(0,0,0,0.3)] rounded-t-[40px]"
       >
+
         <style>{`
           @keyframes swimRight {
             0% { transform: translateX(-15vw) translateY(0) rotate(0deg); }
@@ -579,19 +729,19 @@ const Dashboard: React.FC = () => {
 
           {/* Museum Exhibition Lightbox Preview */}
           {selectedItem && (
-            <div 
+            <div
               onClick={() => setSelectedItem(null)}
               className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 transition-all duration-300 animate-in fade-in"
             >
-              <div 
+              <div
                 onClick={(e) => e.stopPropagation()}
                 className="bg-[#002d3c] border border-[#0a9396]/40 rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl relative text-left animate-in zoom-in-95 duration-300"
               >
                 <div className="relative h-80 md:h-96 bg-black">
                   <img src={selectedItem.image} alt={selectedItem.name} className="w-full h-full object-cover" />
                   <div className="absolute inset-0 bg-gradient-to-t from-[#002d3c] via-transparent to-transparent"></div>
-                  
-                  <button 
+
+                  <button
                     onClick={() => setSelectedItem(null)}
                     className="absolute top-4 right-4 bg-black/70 text-neutral-400 hover:text-white rounded-full w-8 h-8 flex items-center justify-center border border-neutral-800 text-xs transition-colors cursor-pointer"
                   >
@@ -631,7 +781,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Frequently Asked Questions (2-Column Layout: Sticky Title on Left, Scroll-Stacked FAQ Cards on Right) */}
-        <div className="max-w-[1250px] mx-auto pt-28 border-t border-white/10 mt-24">
+        <div id="faq-section" className="max-w-[1250px] mx-auto pt-28 border-t border-white/10 mt-24">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start relative">
             {/* Left Column: Sticky Title & Subtitle Header */}
             <div className="lg:col-span-5 lg:sticky lg:top-28 space-y-4 text-left">
@@ -644,7 +794,7 @@ const Dashboard: React.FC = () => {
               <p className="text-sm sm:text-base text-neutral-300 leading-relaxed max-w-md pt-2">
                 Everything you need to know about our seafood bilao orders, delivery coverage, and catering services.
               </p>
-              
+
               <div className="pt-6 hidden lg:block">
                 <div className="inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/10 border border-[#94d2bd]/30 backdrop-blur-md text-[#94d2bd] text-xs font-medium font-mono">
                   <span className="w-2 h-2 rounded-full bg-[#94d2bd] animate-ping" />

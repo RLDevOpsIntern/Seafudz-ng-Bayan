@@ -34,7 +34,7 @@ export const ClickStack: React.FC<ClickStackProps> = ({ items, className = '' })
   };
 
   return (
-    <div className={`relative w-full aspect-square max-w-[520px] mx-auto ${className}`}>
+    <div className={`relative w-full min-h-[440px] sm:min-h-[460px] sm:aspect-square max-w-[520px] mx-auto ${className}`}>
       {stack.map((item, index) => {
         const isTop = index === 0;
         const offset = Math.min(index, 4) * 14;
@@ -46,7 +46,7 @@ export const ClickStack: React.FC<ClickStackProps> = ({ items, className = '' })
           <div
             key={item.id}
             onClick={() => handleClick(index)}
-            className={`absolute inset-0 bg-[#001e28]/95 backdrop-blur-2xl border border-[#0a9396]/40 p-8 sm:p-10 rounded-[32px] shadow-[0_-20px_45px_rgba(0,0,0,0.4)] hover:border-[#94d2bd] hover:shadow-[0_0_35px_rgba(148,210,189,0.35)] transition-all duration-500 ease-out group overflow-hidden cursor-pointer select-none flex flex-col justify-between ${
+            className={`absolute inset-0 bg-[#001e28]/95 backdrop-blur-2xl border border-[#0a9396]/40 p-6 sm:p-10 rounded-[28px] sm:rounded-[32px] shadow-[0_-20px_45px_rgba(0,0,0,0.4)] hover:border-[#94d2bd] hover:shadow-[0_0_35px_rgba(148,210,189,0.35)] transition-all duration-500 ease-out group overflow-hidden cursor-pointer select-none flex flex-col justify-between ${
               isTop ? 'hover:-translate-y-2' : ''
             }`}
             style={{
