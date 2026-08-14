@@ -57,6 +57,8 @@ steps:
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
+      - '--port'
+      - '8080'
 
   # -------------------------------------------------------------------------
   # Step 5: Install Dependencies & Build Frontend Production Assets

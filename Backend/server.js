@@ -64,19 +64,19 @@ app.use((req, res) => {
 });
 
 // Start Express Server
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`=================================================`);
   console.log(`🚀 Seafudz ng Bayan Complete Backend API Server`);
-  console.log(`📡 Server Address: http://localhost:${PORT}`);
+  console.log(`📡 Server Address: http://0.0.0.0:${PORT}`);
   console.log(`-------------------------------------------------`);
-  console.log(`📜 Menu & Catalog:   GET   http://localhost:${PORT}/api/menu`);
-  console.log(`🛒 POS & Orders:    GET/POST http://localhost:${PORT}/api/orders`);
-  console.log(`👨‍🍳 Kitchen Queue:   GET   http://localhost:${PORT}/api/kitchen/orders`);
-  console.log(`🚀 Rider Deliveries: GET   http://localhost:${PORT}/api/rider/deliveries`);
-  console.log(`🛎️  Assistant Calls:  GET/POST http://localhost:${PORT}/api/assistant/calls`);
-  console.log(`📊 Sales Analytics: GET   http://localhost:${PORT}/api/sales/summary`);
-  console.log(`👤 Users & Auth:    POST  http://localhost:${PORT}/api/auth/login`);
-  console.log(`💚 Health Status:   GET   http://localhost:${PORT}/api/health`);
+  console.log(`📜 Menu & Catalog:   GET   http://0.0.0.0:${PORT}/api/menu`);
+  console.log(`🛒 POS & Orders:    GET/POST http://0.0.0.0:${PORT}/api/orders`);
+  console.log(`👨‍🍳 Kitchen Queue:   GET   http://0.0.0.0:${PORT}/api/kitchen/orders`);
+  console.log(`🚀 Rider Deliveries: GET   http://0.0.0.0:${PORT}/api/rider/deliveries`);
+  console.log(`🛎️  Assistant Calls:  GET/POST http://0.0.0.0:${PORT}/api/assistant/calls`);
+  console.log(`📊 Sales Analytics: GET   http://0.0.0.0:${PORT}/api/sales/summary`);
+  console.log(`👤 Users & Auth:    POST  http://0.0.0.0:${PORT}/api/auth/login`);
+  console.log(`💚 Health Status:   GET   http://0.0.0.0:${PORT}/api/health`);
   console.log(`=================================================`);
   runMigrations().catch((mErr) => console.warn('Auto-migration note:', mErr.message));
 });
