@@ -2,14 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react'
 import { Navbar } from '../components/Navbar'
 import { API_BASE_URL } from '../utils/api'
 
-// Import assets (same as POS.tsx)
-import seafoodBilaoImg from '../assets/seafood_bilao.png'
-import seafoodCajunImg from '../assets/seafood_cajun.png'
-import spicyShrimpImg from '../assets/spicy_shrimp.png'
-import crabBucketImg from '../assets/crab_bucket.png'
-import garlicButterShrimpImg from '../assets/garlic_butter_shrimp.png'
-import freshJuiceImg from '../assets/fresh_juice.png'
-
 interface MenuItem {
     id: string
     name: string
@@ -40,66 +32,13 @@ interface OnlineOrderState {
     createdAt: string
 }
 
-const MENU_ITEMS: MenuItem[] = [
-    {
-        id: 'm1',
-        name: 'Seafood Bilao',
-        description: 'Shrimp, crab, clams with butter sauce',
-        price: 2000,
-        category: 'Seafood',
-        image: seafoodBilaoImg,
-    },
-    {
-        id: 'm2',
-        name: 'Seafood Cajun Mix',
-        description: 'Cajun Seafood Boil with sweet corn',
-        price: 1800,
-        category: 'Seafood',
-        image: seafoodCajunImg,
-    },
-    {
-        id: 'm3',
-        name: 'Spicy Shrimp',
-        description: 'Garlic Butter Shrimp Mix with chili',
-        price: 1200,
-        category: 'Shrimp',
-        image: spicyShrimpImg,
-    },
-    {
-        id: 'm4',
-        name: 'Crab Bucket',
-        description: 'Steamed crabs with signature cajun seasoning',
-        price: 2500,
-        category: 'Crab',
-        image: crabBucketImg,
-    },
-    {
-        id: 'm5',
-        name: 'Garlic Butter Shrimp',
-        description: 'Creamy garlic butter glazed fresh shrimp',
-        price: 1000,
-        category: 'Shrimp',
-        image: garlicButterShrimpImg,
-    },
-    {
-        id: 'm6',
-        name: 'Fresh Juice',
-        description: 'Purple Fruit Juicy / Mixed Fruit Drink',
-        price: 250,
-        category: 'Drinks',
-        image: freshJuiceImg,
-    },
-]
-
-const CATEGORIES = ['All Menu', 'Seafood', 'Shrimp', 'Crab', 'Drinks']
-
 export const OnlineCustomer: React.FC = () => {
     // Navigation states
     const [activeTab, setActiveTab] = useState<'menu' | 'billing' | 'tracking'>('menu')
 
     // Menu state
-    const [menuItems, setMenuItems] = useState<MenuItem[]>(MENU_ITEMS)
-    const [categories, setCategories] = useState<string[]>(CATEGORIES)
+    const [menuItems, setMenuItems] = useState<MenuItem[]>([])
+    const [categories, setCategories] = useState<string[]>(['All Menu'])
 
     // Menu filter states
     const [searchQuery, setSearchQuery] = useState('')
@@ -115,18 +54,18 @@ export const OnlineCustomer: React.FC = () => {
                 ])
                 if (menuRes.ok) {
                     const menuData = await menuRes.json()
-                    if (menuData.data && menuData.data.length > 0) {
+                    if (menuData.data) {
                         setMenuItems(menuData.data)
                     }
                 }
                 if (catRes.ok) {
                     const catData = await catRes.json()
-                    if (catData.data && catData.data.length > 0) {
+                    if (catData.data) {
                         setCategories(['All Menu', ...catData.data.map((c: { name: string }) => c.name)])
                     }
                 }
             } catch (err) {
-                console.warn('Backend API unavailable, using fallback menu items:', err)
+                console.error('Failed to fetch menu items from API:', err)
             }
         }
         void fetchBackendMenu()
@@ -207,29 +146,82 @@ export const OnlineCustomer: React.FC = () => {
         setTempNote(currentNote)
     }
 
-    const handlePlaceOrder = (e: React.FormEvent) => {
+    const handlePlaceOrder = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!customerName || !phone || !address || cartItems.length === 0) return
 
-        const newOrder: OnlineOrderState = {
-            id: `SFB-${Math.floor(1000 + Math.random() * 9000)}`,
-            customerName,
-            phone,
-            address,
-            paymentMethod,
-            items: [...cartItems],
-            subtotal,
-            vat,
-            deliveryFee,
-            total,
-            status: 'confirmed',
-            createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        }
+        try {
+            const orderPayload = {
+                type: 'Delivery',
+                customerName,
+                phone,
+                deliveryAddress: address,
+                paymentMethod,
+                subtotal,
+                vat,
+                deliveryFee,
+                total,
+                items: cartItems.map((ci) => ({
+                    id: ci.item.id,
+                    name: ci.item.name,
+                    quantity: ci.quantity,
+                    price: ci.item.price,
+                    specialNote: ci.specialNote || '',
+                })),
+            }
 
-        setActiveOrder(newOrder)
-        setCartItems([])
-        setActiveTab('tracking')
-        setIsMobileCartOpen(false)
+            const res = await fetch(`${API_BASE_URL}/orders`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(orderPayload),
+            })
+
+            const responseData = await res.json().catch(() => ({}))
+            const orderId = responseData?.data?.id || `SFB-${Math.floor(1000 + Math.random() * 9000)}`
+
+            const newOrder: OnlineOrderState = {
+                id: orderId,
+                customerName,
+                phone,
+                address,
+                paymentMethod,
+                items: [...cartItems],
+                subtotal,
+                vat,
+                deliveryFee,
+                total,
+                status: 'confirmed',
+                createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            }
+
+            setActiveOrder(newOrder)
+            setCartItems([])
+            setActiveTab('tracking')
+            setIsMobileCartOpen(false)
+        } catch (err) {
+            console.error('Error sending order to backend API:', err)
+            // Local fallback order state to keep UX seamless
+            const newOrder: OnlineOrderState = {
+                id: `SFB-${Math.floor(1000 + Math.random() * 9000)}`,
+                customerName,
+                phone,
+                address,
+                paymentMethod,
+                items: [...cartItems],
+                subtotal,
+                vat,
+                deliveryFee,
+                total,
+                status: 'confirmed',
+                createdAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            }
+            setActiveOrder(newOrder)
+            setCartItems([])
+            setActiveTab('tracking')
+            setIsMobileCartOpen(false)
+        }
     }
 
     const simulateNextStatus = () => {

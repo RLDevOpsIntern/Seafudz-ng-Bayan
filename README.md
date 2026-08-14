@@ -97,6 +97,8 @@ Seafudz-ng-Bayan/
 
 | Target | Command | Description |
 | :--- | :--- | :--- |
+| **All App (FE + BE)** | `npm run dev` | Run both Backend Express API and Frontend React app concurrently |
+| **All App (Alternative)**| `./start-dev.sh` | Shell script to start both Backend & Frontend |
 | **Database** | `docker compose up -d` | Start local Postgres container |
 | **Database** | `docker compose stop` | Stop local Postgres container |
 | **Backend** | `cd Backend && node server.js` | Start local Express API server |
