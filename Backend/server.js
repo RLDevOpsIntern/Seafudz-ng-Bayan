@@ -7,6 +7,8 @@ import orderRoutes from './src/routes/orderRoutes.js';
 import kitchenRoutes from './src/routes/kitchenRoutes.js';
 import riderRoutes from './src/routes/riderRoutes.js';
 import assistantRoutes from './src/routes/assistantRoutes.js';
+import salesRoutes from './src/routes/salesRoutes.js';
+import authRoutes from './src/routes/authRoutes.js';
 import tableRoutes from './src/routes/tableRoutes.js';
 import { runMigrations } from './src/migrations/migrate.js';
 
