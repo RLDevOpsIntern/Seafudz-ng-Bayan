@@ -148,7 +148,7 @@ CREATE INDEX idx_assistant_calls_assistant ON assistant_calls(assistant_id);
 
 -- ---------------------------------------------------------------------
 -- 5. AUTOMATIC TIMESTAMP TRIGGER
--- ---------------------------------------------------------------------
+-- --------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION update_timestamp_column()
 RETURNS TRIGGER AS $$
 BEGIN
