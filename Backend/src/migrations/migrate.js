@@ -94,12 +94,17 @@ export async function runMigrations() {
     console.error('❌ Migration process halted due to error:', err);
     process.exit(1);
   } finally {
-    client.release();
-    // Close pool if running as a CLI command
-    await pool.end();
+    if (client) client.release();
+    // Only close pool if running directly as a standalone CLI script
+    if (process.argv[1] && process.argv[1].includes('migrate.js')) {
+      if (pool) await pool.end();
+    }
   }
 
   console.log('=================================================');
 }
 
-runMigrations();
+// Auto-run only if executed directly via node CLI
+if (process.argv[1] && process.argv[1].includes('migrate.js')) {
+  runMigrations();
+}
