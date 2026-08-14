@@ -60,7 +60,7 @@ steps:
       - '--port'
       - '8080'
       - '--set-env-vars'
-      - 'NODE_ENV=production,PORT=8080'
+      - 'NODE_ENV=production'
 
   # -------------------------------------------------------------------------
   # Step 5: Install Dependencies & Build Frontend Production Assets

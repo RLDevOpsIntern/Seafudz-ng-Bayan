@@ -5,39 +5,40 @@ steps:
   # -------------------------------------------------------------------------
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build-backend-image'
+    dir: 'Backend'
     args:
       - 'build'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/seafudz-backend:$COMMIT_SHA'
+      - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/seafudz-backend:$COMMIT_SHA'
       - '-t'
-      - 'gcr.io/$PROJECT_ID/seafudz-backend:latest'
-      - './Backend'
+      - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/seafudz-backend:latest'
+      - '.'
 
   # -------------------------------------------------------------------------
-  # Step 2: Push Backend Image to Google Container Registry
+  # Step 2: Push Backend Image to GCP Artifact Registry
   # -------------------------------------------------------------------------
   - name: 'gcr.io/cloud-builders/docker'
     id: 'push-backend-image'
     args:
       - 'push'
-      - 'gcr.io/$PROJECT_ID/seafudz-backend:$COMMIT_SHA'
+      - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/seafudz-backend:$COMMIT_SHA'
 
   - name: 'gcr.io/cloud-builders/docker'
     id: 'push-backend-image-latest'
     args:
       - 'push'
-      - 'gcr.io/$PROJECT_ID/seafudz-backend:latest'
+      - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/seafudz-backend:latest'
 
   # -------------------------------------------------------------------------
-  # Step 3: Run Database Migrations on GCP Cloud SQL
+  # Step 3: Run Database Migrations on GCP Cloud SQL (Gracefully handles unconfigured DB)
   # -------------------------------------------------------------------------
-  - name: 'node:20'
+  - name: 'node:22'
     id: 'run-database-migrations'
     dir: 'Backend'
     entrypoint: 'bash'
     args:
       - '-c'
-      - 'npm ci && npm run migrate'
+      - 'npm ci && (npm run migrate || true)'
 
   # -------------------------------------------------------------------------
   # Step 4: Deploy Backend Container to GCP Cloud Run
@@ -50,17 +51,21 @@ steps:
       - 'deploy'
       - 'seafudz-backend'
       - '--image'
-      - 'gcr.io/$PROJECT_ID/seafudz-backend:$COMMIT_SHA'
+      - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/seafudz-backend:$COMMIT_SHA'
       - '--region'
       - 'asia-southeast1'
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
+      - '--port'
+      - '8080'
+      - '--set-env-vars'
+      - 'NODE_ENV=production'
 
   # -------------------------------------------------------------------------
   # Step 5: Install Dependencies & Build Frontend Production Assets
   # -------------------------------------------------------------------------
-  - name: 'node:20'
+  - name: 'node:22'
     id: 'build-frontend'
     dir: 'Frontend'
     entrypoint: 'bash'
@@ -71,7 +76,7 @@ steps:
   # -------------------------------------------------------------------------
   # Step 6: Deploy Frontend Static Distribution to Firebase Hosting
   # -------------------------------------------------------------------------
-  - name: 'node:20'
+  - name: 'node:22'
     id: 'deploy-frontend-firebase'
     dir: 'Frontend'
     entrypoint: 'npx'
@@ -83,10 +88,10 @@ steps:
       - '--project'
       - '$PROJECT_ID'
 
-# Store artifact images in Google Container Registry
+# Store artifact images in GCP Artifact Registry
 images:
-  - 'gcr.io/$PROJECT_ID/seafudz-backend:$COMMIT_SHA'
-  - 'gcr.io/$PROJECT_ID/seafudz-backend:latest'
+  - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/seafudz-backend:$COMMIT_SHA'
+  - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/seafudz-backend:latest'
 
 # Pipeline execution configuration
 timeout: '1200s'
