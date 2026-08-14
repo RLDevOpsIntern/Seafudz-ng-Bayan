@@ -26,6 +26,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// Root health probe for GCP Cloud Run
+app.get('/', (req, res) => {
+  res.status(200).send('Seafudz ng Bayan Backend API Server Running');
+});
+
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({

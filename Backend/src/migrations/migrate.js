@@ -15,11 +15,17 @@ export async function runMigrations() {
   let client;
 
   try {
-    pool = await getDbPool();
-    client = await pool.connect();
+    const connectPromise = getDbPool().then((p) => {
+      pool = p;
+      return p.connect();
+    });
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Connection attempt timed out')), 2500)
+    );
+    client = await Promise.race([connectPromise, timeoutPromise]);
   } catch (err) {
     console.warn(`⚠️ Database connection unavailable (${err.message}).`);
-    console.warn(`👉 Skipping build-time migration. Migrations will run automatically when server connects to PostgreSQL.`);
+    console.warn(`👉 Skipping automatic startup migration.`);
     console.log('=================================================');
     return;
   }
