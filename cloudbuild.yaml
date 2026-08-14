@@ -1,3 +1,4 @@
+# Cloud Build Pipeline Configuration for GCP Cloud Run & Cloud SQL Deployment
 steps:
   # -------------------------------------------------------------------------
   # Step 1: Build Backend Docker Image
