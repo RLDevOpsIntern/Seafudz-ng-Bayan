@@ -21,22 +21,40 @@ export async function getDbPool() {
   const dbPassword = String(process.env.DB_PASSWORD ?? '');
 
   if (instanceConnectionName) {
-    // Cloud SQL Connector setup
+    // Cloud SQL Connector setup with timeout safety
     console.log(`🔌 Initializing Cloud SQL Connector for: ${instanceConnectionName}`);
-    const connector = new Connector();
-    const clientOpts = await connector.getOptions({
-      instanceConnectionName,
-      ipType: process.env.IP_TYPE || 'PUBLIC',
-    });
+    try {
+      const connector = new Connector();
+      const optionsPromise = connector.getOptions({
+        instanceConnectionName,
+        ipType: process.env.IP_TYPE || 'PUBLIC',
+      });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Cloud SQL Connector options timeout')), 3000)
+      );
+      const clientOpts = await Promise.race([optionsPromise, timeoutPromise]);
 
-    pool = new Pool({
-      ...clientOpts,
-      user: process.env.DB_USER || 'postgres',
-      password: dbPassword,
-      database: process.env.DB_NAME || 'seafudz_db',
-      max: parseInt(process.env.DB_POOL_MAX || '10', 10),
-      idleTimeoutMillis: 30000,
-    });
+      pool = new Pool({
+        ...clientOpts,
+        user: process.env.DB_USER || 'postgres',
+        password: dbPassword,
+        database: process.env.DB_NAME || 'seafudz_db',
+        max: parseInt(process.env.DB_POOL_MAX || '10', 10),
+        idleTimeoutMillis: 30000,
+      });
+    } catch (connErr) {
+      console.warn(`⚠️ Cloud SQL Connector note (${connErr.message}). Using standard TCP pool.`);
+      pool = new Pool({
+        host: process.env.DB_HOST || 'localhost',
+        port: parseInt(process.env.DB_PORT || '5432', 10),
+        user: process.env.DB_USER || 'postgres',
+        password: dbPassword,
+        database: process.env.DB_NAME || 'seafudz_db',
+        max: parseInt(process.env.DB_POOL_MAX || '10', 10),
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 3000,
+      });
+    }
   } else {
     // Standard PostgreSQL pool using process.env
     console.log(`🔌 Initializing PostgreSQL Pool (Host: ${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || '5432'}, Database: ${process.env.DB_NAME || 'seafudz_db'})`);
