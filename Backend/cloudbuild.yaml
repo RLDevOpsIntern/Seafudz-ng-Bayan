@@ -5,14 +5,13 @@ steps:
   # -------------------------------------------------------------------------
   - name: 'gcr.io/cloud-builders/docker'
     id: 'build-backend-image'
-    dir: 'Backend'
     args:
       - 'build'
       - '-t'
       - 'gcr.io/$PROJECT_ID/seafudz-backend:$COMMIT_SHA'
       - '-t'
       - 'gcr.io/$PROJECT_ID/seafudz-backend:latest'
-      - '.'
+      - './Backend'
 
   # -------------------------------------------------------------------------
   # Step 2: Push Backend Image to Google Container Registry
