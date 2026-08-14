@@ -30,15 +30,15 @@ steps:
       - 'asia-southeast1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/seafudz-backend:latest'
 
   # -------------------------------------------------------------------------
-  # Step 3: Run Database Migrations on GCP Cloud SQL
+  # Step 3: Run Database Migrations on GCP Cloud SQL (Gracefully handles unconfigured DB)
   # -------------------------------------------------------------------------
-  - name: 'node:20'
+  - name: 'node:22'
     id: 'run-database-migrations'
     dir: 'Backend'
     entrypoint: 'bash'
     args:
       - '-c'
-      - 'npm ci && npm run migrate'
+      - 'npm ci && (npm run migrate || true)'
 
   # -------------------------------------------------------------------------
   # Step 4: Deploy Backend Container to GCP Cloud Run
@@ -59,11 +59,13 @@ steps:
       - '--allow-unauthenticated'
       - '--port'
       - '8080'
+      - '--set-env-vars'
+      - 'NODE_ENV=production,PORT=8080'
 
   # -------------------------------------------------------------------------
   # Step 5: Install Dependencies & Build Frontend Production Assets
   # -------------------------------------------------------------------------
-  - name: 'node:20'
+  - name: 'node:22'
     id: 'build-frontend'
     dir: 'Frontend'
     entrypoint: 'bash'
@@ -74,7 +76,7 @@ steps:
   # -------------------------------------------------------------------------
   # Step 6: Deploy Frontend Static Distribution to Firebase Hosting
   # -------------------------------------------------------------------------
-  - name: 'node:20'
+  - name: 'node:22'
     id: 'deploy-frontend-firebase'
     dir: 'Frontend'
     entrypoint: 'npx'

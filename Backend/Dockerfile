@@ -1,4 +1,5 @@
-FROM node:20-alpine
+# Use Node 22 Alpine to satisfy engine requirements for @supabase and @google-cloud/cloud-sql-connector
+FROM node:22-alpine
 
 # Set working directory
 WORKDIR /app
@@ -17,4 +18,3 @@ EXPOSE 8080
 
 # Start Express server
 CMD ["node", "server.js"]
-

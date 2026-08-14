@@ -15,25 +15,26 @@ import { runMigrations } from './src/migrations/migrate.js';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+// Default to 8080 for GCP Cloud Run or fallback to 5000/process.env
+const PORT = parseInt(process.env.PORT || '8080', 10);
 
-// Middleware
+// Standard Middlewares
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Request logging middleware
+// Request logging
 app.use((req, res, next) => {
   console.log(`[${new Date().toLocaleTimeString()}] ${req.method} ${req.originalUrl}`);
   next();
 });
 
-// Root health probe for GCP Cloud Run
+// Root health probe for GCP Cloud Run startup checks
 app.get('/', (req, res) => {
   res.status(200).send('Seafudz ng Bayan Backend API Server Running');
 });
 
-// Health check endpoint
+// Detailed API health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
@@ -41,18 +42,18 @@ app.get('/api/health', (req, res) => {
     service: 'Seafudz ng Bayan Full API Backend',
     uptime: process.uptime(),
     features: [
-      'Menu Items (100 items)',
+      'Menu Items Catalog',
       'POS & Orders Management',
-      'Kitchen Order Mode',
-      'Rider Delivery System',
-      'Assistant / Table Service',
+      'Kitchen Display System',
+      'Rider Delivery Service',
+      'Assistant Floor Calls',
       'Sales Reports & Analytics',
-      'User Accounts & Authentication'
+      'User Authentication'
     ]
   });
 });
 
-// Mount All Feature REST API Routes
+// Mount All REST API Feature Routes
 app.use('/api', menuRoutes);
 app.use('/api', orderRoutes);
 app.use('/api', kitchenRoutes);
@@ -62,40 +63,36 @@ app.use('/api', salesRoutes);
 app.use('/api', authRoutes);
 app.use('/api', tableRoutes);
 
-// Fallback for unknown routes
+// Fallback route for unknown requests
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: `Route '${req.originalUrl}' not found. Check GET /api/health for endpoints.`,
+    message: `Route '${req.originalUrl}' not found. Check GET /api/health for available endpoints.`,
   });
 });
 
-// Start Express Server
+// Start Express Server immediately on 0.0.0.0 to satisfy Cloud Run health probes instantly
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`=================================================`);
-  console.log(`🚀 Seafudz ng Bayan Complete Backend API Server`);
-  console.log(`📡 Server Address: http://0.0.0.0:${PORT}`);
-  console.log(`-------------------------------------------------`);
-  console.log(`📜 Menu & Catalog:   GET   http://0.0.0.0:${PORT}/api/menu`);
-  console.log(`🛒 POS & Orders:    GET/POST http://0.0.0.0:${PORT}/api/orders`);
-  console.log(`👨‍🍳 Kitchen Queue:   GET   http://0.0.0.0:${PORT}/api/kitchen/orders`);
-  console.log(`🚀 Rider Deliveries: GET   http://0.0.0.0:${PORT}/api/rider/deliveries`);
-  console.log(`🛎️  Assistant Calls:  GET/POST http://0.0.0.0:${PORT}/api/assistant/calls`);
-  console.log(`📊 Sales Analytics: GET   http://0.0.0.0:${PORT}/api/sales/summary`);
-  console.log(`👤 Users & Auth:    POST  http://0.0.0.0:${PORT}/api/auth/login`);
-  console.log(`💚 Health Status:   GET   http://0.0.0.0:${PORT}/api/health`);
+  console.log(`🚀 Seafudz ng Bayan Backend API Server Live`);
+  console.log(`📡 Bound Address: http://0.0.0.0:${PORT}`);
   console.log(`=================================================`);
-  runMigrations().catch((mErr) => console.warn('Auto-migration note:', mErr.message));
+
+  // Defer database migration out-of-band so boot is never blocked
+  setImmediate(() => {
+    runMigrations().catch((mErr) => {
+      console.warn('⚠️ Auto-migration startup note:', mErr.message);
+    });
+  });
 });
 
 server.on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
-    console.error(`\n❌ Error: Port ${PORT} is already in use by another process.`);
-    console.error(`👉 You can kill the process using port ${PORT} with: fuser -k ${PORT}/tcp`);
-    console.error(`👉 Or set a different PORT in your .env file (e.g. PORT=5001).\n`);
+    console.error(`❌ Error: Port ${PORT} is already in use by another process.`);
   } else {
-    console.error('Server error:', err);
+    console.error('❌ Server runtime error:', err);
   }
   process.exit(1);
 });
 
+export default app;
