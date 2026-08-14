@@ -78,7 +78,6 @@ steps:
   # -------------------------------------------------------------------------
   - name: 'node:22'
     id: 'deploy-frontend-firebase'
-    dir: 'Frontend'
     entrypoint: 'npx'
     args:
       - 'firebase-tools'
@@ -87,6 +86,7 @@ steps:
       - 'hosting'
       - '--project'
       - '$PROJECT_ID'
+      - '--non-interactive'
 
 # Store artifact images in GCP Artifact Registry
 images:
