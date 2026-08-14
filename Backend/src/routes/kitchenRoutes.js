@@ -7,7 +7,7 @@ const router = Router();
 router.get('/kitchen/orders', async (req, res) => {
   try {
     const sql = `
-      SELECT o.*, t.table_number,
+      SELECT o.*, t.name AS table_name,
              COALESCE(
                json_agg(
                  json_build_object(
@@ -15,9 +15,9 @@ router.get('/kitchen/orders', async (req, res) => {
                    'menu_item_id', oi.menu_item_id,
                    'quantity', oi.quantity,
                    'unit_price', oi.unit_price,
-                   'subtotal', oi.subtotal,
-                   'notes', oi.item_notes,
-                   'name', m.name
+                   'subtotal', (oi.unit_price * oi.quantity),
+                   'notes', oi.notes,
+                   'name', COALESCE(oi.snapshot_item_name, m.name)
                  )
                ) FILTER (WHERE oi.id IS NOT NULL), '[]'
              ) AS "items"
@@ -25,8 +25,8 @@ router.get('/kitchen/orders', async (req, res) => {
       LEFT JOIN tables t ON o.table_id = t.id
       LEFT JOIN order_items oi ON o.id = oi.order_id
       LEFT JOIN menu_items m ON oi.menu_item_id = m.id
-      WHERE o.order_status IN ('pending', 'in_kitchen', 'cooking', 'preparing')
-      GROUP BY o.id, t.table_number
+      WHERE LOWER(o.status) IN ('pending', 'in_kitchen', 'cooking', 'preparing')
+      GROUP BY o.id, t.name
       ORDER BY o.created_at ASC
     `;
     const { rows } = await query(sql);
@@ -54,8 +54,8 @@ router.patch('/kitchen/orders/:id/status', async (req, res) => {
 
     const sql = `
       UPDATE orders
-      SET order_status = $1, updated_at = NOW()
-      WHERE id = $2 OR order_number = $2
+      SET status = $1, updated_at = NOW()
+      WHERE id = $2
       RETURNING *
     `;
     const { rows } = await query(sql, [status, id]);
@@ -88,8 +88,8 @@ router.delete('/kitchen/orders/:id', async (req, res) => {
     const { id } = req.params;
     const sql = `
       UPDATE orders
-      SET order_status = 'cancelled', updated_at = NOW()
-      WHERE id = $1 OR order_number = $1
+      SET status = 'Cancelled', updated_at = NOW()
+      WHERE id = $1
       RETURNING id
     `;
     await query(sql, [id]);

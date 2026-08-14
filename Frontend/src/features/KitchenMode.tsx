@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Navbar } from '../components/Navbar'
+import { API_BASE_URL } from '../utils/api'
 
 interface OrderItem {
   name: string
@@ -20,8 +21,6 @@ export interface KitchenOrder {
   startTime?: number | null
   completedTimeElapsed?: string
 }
-
-const API_BASE_URL = 'http://localhost:5000/api'
 
 interface RawCartItem {
   item?: { name?: string }

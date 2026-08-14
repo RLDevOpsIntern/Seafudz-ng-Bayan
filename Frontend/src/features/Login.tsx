@@ -2,6 +2,8 @@ import { useState } from 'react';
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import logo from '../assets/logoseafudsngbayan.png';
+import { supabase } from '../utils/supabase';
+import { API_BASE_URL } from '../utils/api';
 
 type UserRole = 'customer' | 'cashier' | 'kitchen' | 'rider' | 'assistant';
 
@@ -9,6 +11,10 @@ const Login = () => {
   const navigate = useNavigate();
   const [showCreateAccount, setShowCreateAccount] = useState(false);
   const [role, setRole] = useState<UserRole>('customer');
+
+  // Form states
+  const [loginInput, setLoginInput] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [fullname, setFullname] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -17,20 +23,117 @@ const Login = () => {
   const [verificationCode, setVerificationCode] = useState('');
   const [termsAccepted, setTermsAccepted] = useState(false);
   
-  // Error/Success messages
+  // UI states
+  const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Business role prevention code (Mock/Standard restaurant admin key)
+  // Business role prevention code (Standard restaurant admin key)
   const REQUIRED_STAFF_KEY = 'SFB-STAFF-99';
 
-  const handleRegister = (e: React.FormEvent) => {
+  const navigateByRole = (userRole?: string) => {
+    const normRole = (userRole || 'customer').toLowerCase();
+    if (normRole === 'cashier') navigate('/sales-report');
+    else if (normRole === 'kitchen') navigate('/kitchen');
+    else if (normRole === 'rider') navigate('/rider');
+    else if (normRole === 'assistant') navigate('/assistant');
+    else navigate('/customer');
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+    setSuccessMessage('');
+
+    if (!loginInput || !loginPassword) {
+      setErrorMessage('Please enter your email/username and password.');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const isEmail = loginInput.trim().includes('@');
+      let supabaseUser = null;
+      let profileData = null;
+      let supabaseAuthErr: string | null = null;
+
+      // 1. Try Supabase Auth login first if an email is provided
+      if (isEmail) {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: loginInput.trim(),
+          password: loginPassword,
+        });
+
+        if (data?.user) {
+          supabaseUser = data.user;
+        } else if (error) {
+          supabaseAuthErr = error.message;
+        }
+      }
+
+      // 2. Fetch or verify profile against Express backend
+      try {
+        const res = await fetch(`${API_BASE_URL}/auth/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: isEmail ? loginInput.trim() : undefined,
+            username: !isEmail ? loginInput.trim() : undefined,
+            pinCode: !isEmail ? loginPassword : undefined,
+            supabaseUserId: supabaseUser?.id,
+          }),
+        });
+
+        if (res.ok) {
+          profileData = await res.json();
+        }
+      } catch (backendErr) {
+        console.warn('Backend API connection note:', backendErr);
+      }
+
+      // 3. Fallback: If username login was used, attempt Supabase Auth using the user's email from database
+      if (!supabaseUser && profileData?.data?.email) {
+        const { data } = await supabase.auth.signInWithPassword({
+          email: profileData.data.email,
+          password: loginPassword,
+        });
+        if (data?.user) {
+          supabaseUser = data.user;
+        }
+      }
+
+      // If neither Supabase Auth nor Express backend profile succeeded
+      if (!profileData?.success && !supabaseUser) {
+        if (supabaseAuthErr) {
+          throw new Error(supabaseAuthErr);
+        }
+        throw new Error('Invalid email/username or password. Please check your credentials.');
+      }
+
+      const userRole = profileData?.data?.role || 'customer';
+      const userName = profileData?.data?.fullname || supabaseUser?.email || loginInput;
+
+      setSuccessMessage(`Welcome back, ${userName}! Redirecting to workspace...`);
+      setTimeout(() => {
+        navigateByRole(userRole);
+      }, 1200);
+
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Login failed. Please check your credentials.';
+      setErrorMessage(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
 
     if (!fullname || !username || !email || !password || !confirmPassword) {
-      setErrorMessage('Please fill in all fields.');
+      setErrorMessage('Please fill in all required fields.');
       return;
     }
 
@@ -40,11 +143,11 @@ const Login = () => {
     }
 
     if (!termsAccepted) {
-      setErrorMessage('You must accept the Terms and Conditions.');
+      setErrorMessage('You must accept the Terms and Conditions to proceed.');
       return;
     }
 
-    // Modern prevention: Validate employee key for business system roles
+    // Validate employee key for business system roles
     if (role !== 'customer') {
       if (!verificationCode) {
         setErrorMessage('Verification is required for business accounts. Please enter your Employee Access Token.');
@@ -56,16 +159,64 @@ const Login = () => {
       }
     }
 
-    // Success registration logic
-    setSuccessMessage(`Account created successfully as ${role.toUpperCase()}! Redirecting...`);
-    setTimeout(() => {
-      // Direct user to their respective interface based on their role
-      if (role === 'cashier') navigate('/sales-report');
-      else if (role === 'kitchen') navigate('/kitchen');
-      else if (role === 'rider') navigate('/rider');
-      else if (role === 'assistant') navigate('/assistant');
-      else navigate('/customer');
-    }, 2000);
+    setIsLoading(true);
+
+    try {
+      // 1. Create User in Supabase Auth Provider
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+      });
+
+      if (authError) {
+        throw new Error(authError.message);
+      }
+
+      const supabaseUserId = authData.user?.id;
+
+      // 2. Register profile in PostgreSQL Express Backend
+      try {
+        await fetch(`${API_BASE_URL}/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            supabaseUserId,
+            fullname,
+            username,
+            email,
+            role,
+            token: verificationCode,
+          }),
+        });
+      } catch (backendErr) {
+        console.warn('Backend API profile sync note:', backendErr);
+      }
+
+      setSuccessMessage(`Account created successfully as ${role.toUpperCase()}! Redirecting...`);
+      setTimeout(() => {
+        navigateByRole(role);
+      }, 1500);
+
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Registration failed. Please try again.';
+      setErrorMessage(msg);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      setErrorMessage('');
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin + '/customer' }
+      });
+      if (error) throw error;
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Google authentication failed';
+      setErrorMessage(msg);
+    }
   };
 
   return (
@@ -85,7 +236,7 @@ const Login = () => {
         <Link to="/login" className="bg-orange-600 hover:bg-orange-700 text-white py-2 px-5 rounded-xl font-semibold text-sm transition-all shadow-2xs">Login / Register</Link>
       </nav>
 
-      {/* Main Login Area */}
+      {/* Main Auth Container */}
       <div className="flex-1 flex justify-center items-center py-12 px-6">
         <div className="bg-white w-full max-w-[480px] rounded-2xl shadow-2xs border border-neutral-200/80 p-8 sm:p-10 transition-all">
           {/* Logo */}
@@ -100,33 +251,58 @@ const Login = () => {
 
           {!showCreateAccount ? (
             /* Login Form */
-            <div>
+            <form onSubmit={handleLogin}>
               <h2 className="text-[1.6rem] font-bold text-[#2d3748] mt-0 mb-[0.4rem]">Welcome Back</h2>
-              <p className="text-[0.95rem] text-[#718096] mt-0 mb-[1.5rem]">Please enter your details to sign in</p>
+              <p className="text-[0.95rem] text-[#718096] mt-0 mb-[1.5rem]">Sign in with your Supabase credentials</p>
               
               <div className="mb-[1.2rem]">
-                <input type="text" placeholder="Username or Email" className="w-full py-[1rem] px-[1.2rem] rounded-[12px] border border-[#e2e8f0] font-sans text-[0.95rem] font-medium text-[#2d3748] transition-all duration-[0.25s] box-border bg-[#f7fafc] focus:outline-none focus:border-[#e74c3c] focus:bg-white focus:shadow-[0_0_0_4px_rgba(231,76,60,0.1)]" />
+                <input
+                  type="text"
+                  placeholder="Email or Staff Username"
+                  required
+                  className="w-full py-[1rem] px-[1.2rem] rounded-[12px] border border-[#e2e8f0] font-sans text-[0.95rem] font-medium text-[#2d3748] transition-all duration-[0.25s] box-border bg-[#f7fafc] focus:outline-none focus:border-[#e74c3c] focus:bg-white focus:shadow-[0_0_0_4px_rgba(231,76,60,0.1)]"
+                  value={loginInput}
+                  onChange={(e) => setLoginInput(e.target.value)}
+                />
               </div>
               <div className="mb-[1.2rem]">
-                <input type="password" placeholder="Password" className="w-full py-[1rem] px-[1.2rem] rounded-[12px] border border-[#e2e8f0] font-sans text-[0.95rem] font-medium text-[#2d3748] transition-all duration-[0.25s] box-border bg-[#f7fafc] focus:outline-none focus:border-[#e74c3c] focus:bg-white focus:shadow-[0_0_0_4px_rgba(231,76,60,0.1)]" />
+                <input
+                  type="password"
+                  placeholder="Password or Counter PIN"
+                  required
+                  className="w-full py-[1rem] px-[1.2rem] rounded-[12px] border border-[#e2e8f0] font-sans text-[0.95rem] font-medium text-[#2d3748] transition-all duration-[0.25s] box-border bg-[#f7fafc] focus:outline-none focus:border-[#e74c3c] focus:bg-white focus:shadow-[0_0_0_4px_rgba(231,76,60,0.1)]"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                />
               </div>
               
               <div className="flex justify-between items-center mb-[2rem] text-[0.9rem]">
                 <label className="flex items-center gap-[0.5rem] text-[#4a5568] cursor-pointer font-medium">
-                  <input type="checkbox" className="accent-[#e74c3c]" /> Remember me
+                  <input type="checkbox" className="accent-[#e74c3c]" defaultChecked /> Remember me
                 </label>
                 <button type="button" className="bg-none border-none text-[#e74c3c] font-semibold font-sans text-[0.9rem] cursor-pointer p-0 transition-all hover:text-[#c0392b] hover:underline">Forgot Password?</button>
               </div>
 
-              <button className="w-full p-[1rem] bg-gradient-to-r from-[#e74c3c] to-[#d35400] text-white border-none rounded-[12px] font-bold text-[1rem] font-sans cursor-pointer shadow-[0_6px_20px_rgba(231,76,60,0.2)] transition-all duration-300 hover:translate-y-[-2px] hover:shadow-[0_10px_25px_rgba(231,76,60,0.35)] mb-[1rem] tracking-[0.5px]" onClick={() => navigate('/customer')}>Login</button>
-              <button className="w-full p-[0.9rem] bg-white text-[#4a5568] border border-[#e2e8f0] rounded-[12px] font-semibold text-[0.95rem] font-sans cursor-pointer transition-all duration-[0.25s] flex items-center justify-center gap-[0.8rem] mb-[2rem] hover:bg-[#f7fafc] hover:border-[#cbd5e0]">
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full p-[1rem] bg-gradient-to-r from-[#e74c3c] to-[#d35400] text-white border-none rounded-[12px] font-bold text-[1rem] font-sans cursor-pointer shadow-[0_6px_20px_rgba(231,76,60,0.2)] transition-all duration-300 hover:translate-y-[-2px] hover:shadow-[0_10px_25px_rgba(231,76,60,0.35)] mb-[1rem] tracking-[0.5px] disabled:opacity-50"
+              >
+                {isLoading ? 'SIGNING IN...' : 'LOGIN'}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleGoogleLogin}
+                className="w-full p-[0.9rem] bg-white text-[#4a5568] border border-[#e2e8f0] rounded-[12px] font-semibold text-[0.95rem] font-sans cursor-pointer transition-all duration-[0.25s] flex items-center justify-center gap-[0.8rem] mb-[2rem] hover:bg-[#f7fafc] hover:border-[#cbd5e0]"
+              >
                 <span className="font-extrabold bg-gradient-to-r from-[#4285f4] via-[#ea4335] via-[#fbbc05] to-[#34a853] bg-clip-text text-transparent">G</span> Sign in with Google
               </button>
 
               <p className="text-center text-[0.9rem] text-[#718096] m-0">
                 Don't have an account? <span className="text-[#e74c3c] font-bold cursor-pointer transition-all hover:text-[#c0392b] hover:underline" onClick={() => setShowCreateAccount(true)}>Create Account</span>
               </p>
-            </div>
+            </form>
           ) : (
             /* Create Account Form */
             <form onSubmit={handleRegister}>
@@ -153,7 +329,7 @@ const Login = () => {
                 </div>
               </div>
 
-              {/* Modern Prevention Field - Slides in when a business role is selected */}
+              {/* Business Prevention Token Field */}
               {role !== 'customer' && (
                 <div className="bg-[#fffaf0] border border-[#feebc8] p-[1.2rem] rounded-[14px] mb-[1.5rem] animate-slide-down">
                   <div className="text-[0.85rem] text-[#c05621] font-bold mb-[0.8rem] flex items-center gap-[0.4rem]">
@@ -178,6 +354,7 @@ const Login = () => {
                 <input
                   type="text"
                   placeholder="Full Name"
+                  required
                   className="w-full py-[1rem] px-[1.2rem] rounded-[12px] border border-[#e2e8f0] font-sans text-[0.95rem] font-medium text-[#2d3748] transition-all duration-[0.25s] box-border bg-[#f7fafc] focus:outline-none focus:border-[#e74c3c] focus:bg-white focus:shadow-[0_0_0_4px_rgba(231,76,60,0.1)]"
                   value={fullname}
                   onChange={(e) => setFullname(e.target.value)}
@@ -187,6 +364,7 @@ const Login = () => {
                 <input
                   type="text"
                   placeholder="Username"
+                  required
                   className="w-full py-[1rem] px-[1.2rem] rounded-[12px] border border-[#e2e8f0] font-sans text-[0.95rem] font-medium text-[#2d3748] transition-all duration-[0.25s] box-border bg-[#f7fafc] focus:outline-none focus:border-[#e74c3c] focus:bg-white focus:shadow-[0_0_0_4px_rgba(231,76,60,0.1)]"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -196,6 +374,7 @@ const Login = () => {
                 <input
                   type="email"
                   placeholder="Email Address"
+                  required
                   className="w-full py-[1rem] px-[1.2rem] rounded-[12px] border border-[#e2e8f0] font-sans text-[0.95rem] font-medium text-[#2d3748] transition-all duration-[0.25s] box-border bg-[#f7fafc] focus:outline-none focus:border-[#e74c3c] focus:bg-white focus:shadow-[0_0_0_4px_rgba(231,76,60,0.1)]"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -205,6 +384,7 @@ const Login = () => {
                 <input
                   type="password"
                   placeholder="Password"
+                  required
                   className="w-full py-[1rem] px-[1.2rem] rounded-[12px] border border-[#e2e8f0] font-sans text-[0.95rem] font-medium text-[#2d3748] transition-all duration-[0.25s] box-border bg-[#f7fafc] focus:outline-none focus:border-[#e74c3c] focus:bg-white focus:shadow-[0_0_0_4px_rgba(231,76,60,0.1)]"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -214,6 +394,7 @@ const Login = () => {
                 <input
                   type="password"
                   placeholder="Confirm Password"
+                  required
                   className="w-full py-[1rem] px-[1.2rem] rounded-[12px] border border-[#e2e8f0] font-sans text-[0.95rem] font-medium text-[#2d3748] transition-all duration-[0.25s] box-border bg-[#f7fafc] focus:outline-none focus:border-[#e74c3c] focus:bg-white focus:shadow-[0_0_0_4px_rgba(231,76,60,0.1)]"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -230,7 +411,13 @@ const Login = () => {
                 I agree to the Terms and Conditions
               </label>
 
-              <button type="submit" className="w-full p-[1rem] bg-gradient-to-r from-[#e74c3c] to-[#d35400] text-white border-none rounded-[12px] font-bold text-[1rem] font-sans cursor-pointer shadow-[0_6px_20px_rgba(231,76,60,0.2)] transition-all duration-300 hover:translate-y-[-2px] hover:shadow-[0_10px_25px_rgba(231,76,60,0.35)] mb-[1rem] tracking-[0.5px]">CREATE ACCOUNT</button>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full p-[1rem] bg-gradient-to-r from-[#e74c3c] to-[#d35400] text-white border-none rounded-[12px] font-bold text-[1rem] font-sans cursor-pointer shadow-[0_6px_20px_rgba(231,76,60,0.2)] transition-all duration-300 hover:translate-y-[-2px] hover:shadow-[0_10px_25px_rgba(231,76,60,0.35)] mb-[1rem] tracking-[0.5px] disabled:opacity-50"
+              >
+                {isLoading ? 'CREATING ACCOUNT...' : 'CREATE ACCOUNT'}
+              </button>
               
               <p className="text-center text-[0.9rem] text-[#718096] m-0">
                 Already have an Account? <span className="text-[#e74c3c] font-bold cursor-pointer transition-all hover:text-[#c0392b] hover:underline" onClick={() => setShowCreateAccount(false)}>Login</span>

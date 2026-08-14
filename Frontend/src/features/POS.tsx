@@ -7,8 +7,7 @@ import { SuccessModal } from '../components/SuccessModal'
 import { ReceiptModal } from './ReceiptModal'
 import type { MenuItem } from '../components/MenuCard'
 import type { CartItem } from '../components/OrderItemRow'
-
-const API_BASE_URL = 'http://localhost:5000/api'
+import { API_BASE_URL } from '../utils/api'
 
 export const POS: React.FC = () => {
   // State variables
@@ -185,6 +184,7 @@ export const POS: React.FC = () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          tableId: tableLocation,
           table: tableLocation,
           type: orderType,
           cartItems,

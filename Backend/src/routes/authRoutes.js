@@ -1,9 +1,33 @@
 import { Router } from 'express';
 import { query } from '../config/db.js';
+import { requireAuth } from '../middleware/authMiddleware.js';
 
 const router = Router();
 
-// GET /api/users - Get all employees/users from database
+/**
+ * GET /api/auth/me
+ * Retrieves current authenticated user profile (Employee or Customer)
+ * Requires Bearer JWT token in Authorization header.
+ */
+router.get('/auth/me', requireAuth, async (req, res) => {
+  try {
+    return res.status(200).json({
+      success: true,
+      data: req.user,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve current user profile',
+      error: error.message,
+    });
+  }
+});
+
+/**
+ * GET /api/users
+ * Returns list of all employee staff profiles for management dashboard
+ */
 router.get('/users', async (req, res) => {
   try {
     const sql = `
@@ -28,40 +52,72 @@ router.get('/users', async (req, res) => {
   }
 });
 
-// POST /api/auth/login - Employee/User login check against database
+/**
+ * POST /api/auth/login
+ * Validates login credentials against employees or customers in PostgreSQL
+ * Accepts supabaseUserId, email, or username + pinCode
+ */
 router.post('/auth/login', async (req, res) => {
   try {
-    const { username, pinCode } = req.body;
-    if (!username) {
-      return res.status(400).json({
-        success: false,
-        message: 'Username is required',
-      });
+    const { username, pinCode, supabaseUserId, email } = req.body;
+    const searchValue = (email || username || '').trim();
+
+    // 1. Search employees table
+    let empSql = `SELECT * FROM employees WHERE 1=0`;
+    let empParams = [];
+
+    if (supabaseUserId) {
+      empSql = `SELECT * FROM employees WHERE supabase_user_id = $1`;
+      empParams = [supabaseUserId];
+    } else if (email) {
+      empSql = `SELECT * FROM employees WHERE LOWER(email) = LOWER($1)`;
+      empParams = [email.trim()];
+    } else if (username) {
+      empSql = `SELECT * FROM employees WHERE LOWER(username) = LOWER($1)`;
+      empParams = [username.trim()];
+      if (pinCode) {
+        empSql += ` AND pin_code = $2`;
+        empParams.push(pinCode.trim());
+      }
     }
 
-    let sql = `SELECT * FROM employees WHERE LOWER(username) = LOWER($1)`;
-    const params = [username];
-
-    if (pinCode) {
-      sql += ` AND pin_code = $2`;
-      params.push(pinCode);
+    if (empParams.length > 0) {
+      const empRes = await query(empSql, empParams);
+      if (empRes.rows.length > 0) {
+        return res.status(200).json({
+          success: true,
+          message: `Login successful for ${empRes.rows[0].fullname}`,
+          data: empRes.rows[0],
+        });
+      }
     }
 
-    const { rows } = await query(sql, params);
+    // 2. Search customers table
+    let custSql = `SELECT * FROM customers WHERE 1=0`;
+    let custParams = [];
 
-    if (rows.length === 0) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials or employee not found',
-      });
+    if (supabaseUserId) {
+      custSql = `SELECT * FROM customers WHERE supabase_user_id = $1`;
+      custParams = [supabaseUserId];
+    } else if (searchValue) {
+      custSql = `SELECT * FROM customers WHERE LOWER(email) = LOWER($1) OR LOWER(fullname) = LOWER($1)`;
+      custParams = [searchValue];
     }
 
-    const user = rows[0];
+    if (custParams.length > 0) {
+      const custRes = await query(custSql, custParams);
+      if (custRes.rows.length > 0) {
+        return res.status(200).json({
+          success: true,
+          message: `Login successful for ${custRes.rows[0].fullname}`,
+          data: { ...custRes.rows[0], role: 'customer' },
+        });
+      }
+    }
 
-    return res.status(200).json({
-      success: true,
-      message: `Login successful for ${user.fullname}`,
-      data: user,
+    return res.status(404).json({
+      success: false,
+      message: 'User profile record not found in database',
     });
   } catch (error) {
     console.error('Error authenticating user:', error);
@@ -73,20 +129,26 @@ router.post('/auth/login', async (req, res) => {
   }
 });
 
-// POST /api/auth/register - Register new user/employee in database
+/**
+ * POST /api/auth/register
+ * Provision user/employee profile in PostgreSQL database linked to Supabase Auth UID
+ */
 router.post('/auth/register', async (req, res) => {
   try {
-    const { fullname, username, email, role, pinCode, supabaseUserId, token } = req.body;
+    const { fullname, username, email, role, pinCode, supabaseUserId, token, phone, address } = req.body;
 
-    if (!fullname || !username || !email) {
+    if (!fullname || !email) {
       return res.status(400).json({
         success: false,
-        message: 'Please fill in all required fields (fullname, username, email)',
+        message: 'Please fill in all required fields (fullname, email)',
       });
     }
 
-    const selectedRole = role || 'cashier';
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanFullname = fullname.trim();
+    const selectedRole = (role || 'customer').toLowerCase();
 
+    // Staff/Employee account creation
     if (selectedRole !== 'customer') {
       if (token && token.toUpperCase() !== 'SFB-STAFF-99') {
         return res.status(403).json({
@@ -94,36 +156,82 @@ router.post('/auth/register', async (req, res) => {
           message: 'Access Denied: Invalid Employee Access Token for staff account.',
         });
       }
+
+      // Generate clean unique username if not supplied
+      const cleanUsername = (username || cleanEmail.split('@')[0] + '_' + Math.floor(100 + Math.random() * 900)).trim().toLowerCase();
+      const defaultPin = pinCode || '1234';
+
+      const sql = `
+        INSERT INTO employees (supabase_user_id, fullname, username, email, pin_code, role)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (email) DO UPDATE SET
+          supabase_user_id = COALESCE(EXCLUDED.supabase_user_id, employees.supabase_user_id),
+          fullname = EXCLUDED.fullname,
+          role = EXCLUDED.role,
+          pin_code = COALESCE(EXCLUDED.pin_code, employees.pin_code)
+        RETURNING id, supabase_user_id, fullname, username, email, role, shift_status, is_active, created_at
+      `;
+
+      const { rows } = await query(sql, [
+        supabaseUserId || null,
+        cleanFullname,
+        cleanUsername,
+        cleanEmail,
+        defaultPin,
+        selectedRole,
+      ]);
+
+      return res.status(201).json({
+        success: true,
+        message: `Staff profile provisioned successfully for ${cleanFullname}`,
+        data: rows[0],
+      });
+    } else {
+      // Customer account creation
+      const sql = `
+        INSERT INTO customers (supabase_user_id, fullname, email, phone, delivery_address)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (email) DO UPDATE SET
+          supabase_user_id = COALESCE(EXCLUDED.supabase_user_id, customers.supabase_user_id),
+          fullname = EXCLUDED.fullname,
+          phone = COALESCE(EXCLUDED.phone, customers.phone),
+          delivery_address = COALESCE(EXCLUDED.delivery_address, customers.delivery_address)
+        RETURNING id, supabase_user_id, fullname, email, phone, delivery_address, created_at
+      `;
+
+      const { rows } = await query(sql, [
+        supabaseUserId || null,
+        cleanFullname,
+        cleanEmail,
+        phone || null,
+        address || null,
+      ]);
+
+      return res.status(201).json({
+        success: true,
+        message: `Customer profile provisioned successfully for ${cleanFullname}`,
+        data: { ...rows[0], role: 'customer' },
+      });
     }
-
-    const sql = `
-      INSERT INTO employees (supabase_user_id, fullname, username, email, pin_code, role)
-      VALUES ($1, $2, $3, $4, $5, $6)
-      RETURNING id, supabase_user_id, fullname, username, email, role, is_active, created_at
-    `;
-
-    const { rows } = await query(sql, [
-      supabaseUserId || null,
-      fullname,
-      username,
-      email,
-      pinCode || null,
-      selectedRole,
-    ]);
-
-    return res.status(201).json({
-      success: true,
-      message: `Account created successfully for ${fullname}`,
-      data: rows[0],
-    });
   } catch (error) {
     console.error('Error registering user:', error);
     return res.status(500).json({
       success: false,
-      message: 'User registration failed',
+      message: 'User profile registration failed',
       error: error.message,
     });
   }
+});
+
+/**
+ * POST /api/auth/logout
+ * Confirms user session termination
+ */
+router.post('/auth/logout', (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: 'Logged out successfully',
+  });
 });
 
 export default router;

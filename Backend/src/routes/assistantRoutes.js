@@ -7,8 +7,8 @@ const router = Router();
 router.get('/assistant/calls', async (req, res) => {
   try {
     const sql = `
-      SELECT ac.id, ac.call_type AS type, ac.status, ac.created_at AS timestamp,
-             t.table_number, t.id AS table_id
+      SELECT ac.id, ac.type AS type, ac.status, ac.created_at AS timestamp,
+             t.name AS table_name, t.id AS table_id
       FROM assistant_calls ac
       LEFT JOIN tables t ON ac.table_id = t.id
       ORDER BY ac.created_at DESC
@@ -17,7 +17,7 @@ router.get('/assistant/calls', async (req, res) => {
 
     const formattedCalls = rows.map((r) => ({
       id: r.id,
-      table: r.table_number ? `Table ${r.table_number}` : 'Floor',
+      table: r.table_name ? (r.table_name.toLowerCase().startsWith('table') ? r.table_name : `Table ${r.table_name}`) : (r.table_id || 'Floor'),
       tableId: r.table_id,
       type: r.type,
       status: r.status,
@@ -42,15 +42,16 @@ router.get('/assistant/calls', async (req, res) => {
 // POST /api/assistant/call - Trigger table assistance request
 router.post('/assistant/call', async (req, res) => {
   try {
-    const { tableId, table, type } = req.body;
+    const { tableId, type } = req.body;
+    const callId = `CALL-${Date.now().toString().slice(-6)}`;
 
     const sql = `
-      INSERT INTO assistant_calls (table_id, call_type, status)
-      VALUES ($1, $2, $3)
+      INSERT INTO assistant_calls (id, table_id, type, status)
+      VALUES ($1, $2, $3, $4)
       RETURNING *
     `;
 
-    const { rows } = await query(sql, [tableId || null, type || 'Call Waiter', 'pending']);
+    const { rows } = await query(sql, [callId, tableId || null, type || 'Call Waiter', 'Pending']);
 
     return res.status(201).json({
       success: true,
@@ -75,7 +76,7 @@ router.patch('/assistant/calls/:id/resolve', async (req, res) => {
 
     const sql = `
       UPDATE assistant_calls
-      SET status = 'resolved', responded_by_employee_id = $1, resolved_at = NOW()
+      SET status = 'Resolved', assistant_id = $1, updated_at = NOW()
       WHERE id = $2
       RETURNING *
     `;

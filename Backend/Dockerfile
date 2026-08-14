@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install production dependencies
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 
 # Copy application source code
 COPY . .
@@ -17,3 +17,4 @@ EXPOSE 8080
 
 # Start Express server
 CMD ["node", "server.js"]
+

@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import { Navbar } from '../components/Navbar'
+import { API_BASE_URL } from '../utils/api'
 
 // Import assets (same as POS.tsx)
 import seafoodBilaoImg from '../assets/seafood_bilao.png'
@@ -96,9 +97,40 @@ export const OnlineCustomer: React.FC = () => {
     // Navigation states
     const [activeTab, setActiveTab] = useState<'menu' | 'billing' | 'tracking'>('menu')
 
+    // Menu state
+    const [menuItems, setMenuItems] = useState<MenuItem[]>(MENU_ITEMS)
+    const [categories, setCategories] = useState<string[]>(CATEGORIES)
+
     // Menu filter states
     const [searchQuery, setSearchQuery] = useState('')
     const [selectedCategory, setSelectedCategory] = useState('All Menu')
+
+    // Fetch dynamic menu from backend API
+    useEffect(() => {
+        const fetchBackendMenu = async () => {
+            try {
+                const [menuRes, catRes] = await Promise.all([
+                    fetch(`${API_BASE_URL}/menu`),
+                    fetch(`${API_BASE_URL}/categories`)
+                ])
+                if (menuRes.ok) {
+                    const menuData = await menuRes.json()
+                    if (menuData.data && menuData.data.length > 0) {
+                        setMenuItems(menuData.data)
+                    }
+                }
+                if (catRes.ok) {
+                    const catData = await catRes.json()
+                    if (catData.data && catData.data.length > 0) {
+                        setCategories(['All Menu', ...catData.data.map((c: { name: string }) => c.name)])
+                    }
+                }
+            } catch (err) {
+                console.warn('Backend API unavailable, using fallback menu items:', err)
+            }
+        }
+        void fetchBackendMenu()
+    }, [])
 
     // Cart state
     const [cartItems, setCartItems] = useState<CartItem[]>([])
@@ -125,15 +157,15 @@ export const OnlineCustomer: React.FC = () => {
 
     // Filters
     const filteredItems = useMemo(() => {
-        return MENU_ITEMS.filter((item) => {
+        return menuItems.filter((item) => {
             const matchesSearch =
                 item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 item.description.toLowerCase().includes(searchQuery.toLowerCase())
             const matchesCategory =
-                selectedCategory === 'All Menu' || item.category === selectedCategory
+                selectedCategory === 'All Menu' || item.category.toLowerCase() === selectedCategory.toLowerCase()
             return matchesSearch && matchesCategory
         })
-    }, [searchQuery, selectedCategory])
+    }, [menuItems, searchQuery, selectedCategory])
 
     // Handlers
     const handleAddToCart = (item: MenuItem) => {
@@ -276,7 +308,7 @@ export const OnlineCustomer: React.FC = () => {
                         <main className="lg:col-span-3 flex flex-col gap-6">
                             {/* Category tabs */}
                             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
-                                {CATEGORIES.map((cat) => (
+                                {categories.map((cat) => (
                                     <button
                                         key={cat}
                                         onClick={() => setSelectedCategory(cat)}

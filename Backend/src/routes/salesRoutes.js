@@ -9,37 +9,37 @@ router.get('/sales/summary', async (req, res) => {
     const summarySql = `
       SELECT 
         COUNT(id)::int AS "totalOrders",
-        COALESCE(SUM(total_amount), 0)::float AS "grossRevenue",
+        COALESCE(SUM(total), 0)::float AS "grossRevenue",
         COALESCE(SUM(subtotal), 0)::float AS "subtotalRevenue",
-        COALESCE(SUM(tax), 0)::float AS "vatCollected",
-        COALESCE(AVG(total_amount), 0)::float AS "averageOrderValue"
+        COALESCE(SUM(vat), 0)::float AS "vatCollected",
+        COALESCE(AVG(total), 0)::float AS "averageOrderValue"
       FROM orders
-      WHERE order_status != 'cancelled'
+      WHERE LOWER(status) != 'cancelled'
     `;
     const summaryRes = await query(summarySql);
     const summary = summaryRes.rows[0];
 
     const paymentSql = `
-      SELECT payment_method, COALESCE(SUM(total_amount), 0)::float AS total
+      SELECT payment_method, COALESCE(SUM(total), 0)::float AS total
       FROM orders
-      WHERE order_status != 'cancelled'
+      WHERE LOWER(status) != 'cancelled'
       GROUP BY payment_method
     `;
     const paymentRes = await query(paymentSql);
     const paymentMethods = {};
     paymentRes.rows.forEach((r) => {
-      paymentMethods[r.payment_method || 'cash'] = r.total;
+      paymentMethods[r.payment_method || 'Cash'] = r.total;
     });
 
     const topDishesSql = `
-      SELECT m.name, 
+      SELECT COALESCE(oi.snapshot_item_name, m.name) AS name, 
              SUM(oi.quantity)::int AS "quantitySold", 
-             SUM(oi.subtotal)::float AS "revenue"
+             SUM(oi.unit_price * oi.quantity)::float AS "revenue"
       FROM order_items oi
-      JOIN menu_items m ON oi.menu_item_id = m.id
+      LEFT JOIN menu_items m ON oi.menu_item_id = m.id
       JOIN orders o ON oi.order_id = o.id
-      WHERE o.order_status != 'cancelled'
-      GROUP BY m.id, m.name
+      WHERE LOWER(o.status) != 'cancelled'
+      GROUP BY COALESCE(oi.snapshot_item_name, m.name)
       ORDER BY "quantitySold" DESC
       LIMIT 5
     `;
@@ -72,12 +72,12 @@ router.get('/sales/transactions', async (req, res) => {
   try {
     const sql = `
       SELECT id AS "orderId", 
-             order_number AS "transactionId", 
+             id AS "transactionId", 
              created_at AS "date", 
-             order_type AS "type", 
+             type AS "type", 
              payment_method AS "paymentMethod", 
-             total_amount AS "totalAmount",
-             order_status AS "status"
+             total AS "totalAmount",
+             status AS "status"
       FROM orders
       ORDER BY created_at DESC
     `;

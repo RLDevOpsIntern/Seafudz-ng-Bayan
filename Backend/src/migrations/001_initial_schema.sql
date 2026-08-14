@@ -77,10 +77,10 @@ CREATE TABLE IF NOT EXISTS orders (
     cashier_id UUID REFERENCES employees(id) ON DELETE SET NULL,
     assistant_id UUID REFERENCES employees(id) ON DELETE SET NULL,
     rider_id UUID REFERENCES employees(id) ON DELETE SET NULL,
-    type VARCHAR(50) NOT NULL DEFAULT 'Take Out' CHECK (type IN ('Dine In', 'Take Out', 'Delivery')),
-    status VARCHAR(50) NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending', 'Preparing', 'Ready', 'Served', 'Completed', 'Cancelled')),
-    payment_status VARCHAR(50) NOT NULL DEFAULT 'Paid' CHECK (payment_status IN ('Paid', 'Unpaid', 'Refunded')),
-    payment_method VARCHAR(50) NOT NULL DEFAULT 'Cash' CHECK (payment_method IN ('Cash', 'GCash', 'Card', 'Maya')),
+    type VARCHAR(50) NOT NULL DEFAULT 'Take Out',
+    status VARCHAR(50) NOT NULL DEFAULT 'Pending',
+    payment_status VARCHAR(50) NOT NULL DEFAULT 'Paid',
+    payment_method VARCHAR(50) NOT NULL DEFAULT 'Cash',
     subtotal NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
     vat NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
     total NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
@@ -104,10 +104,10 @@ CREATE TABLE IF NOT EXISTS order_items (
 -- ASSISTANT CALLS TABLE
 CREATE TABLE IF NOT EXISTS assistant_calls (
     id VARCHAR(100) PRIMARY KEY,
-    table_id VARCHAR(100) NOT NULL REFERENCES tables(id) ON DELETE CASCADE,
+    table_id VARCHAR(100) REFERENCES tables(id) ON DELETE CASCADE,
     assistant_id UUID REFERENCES employees(id) ON DELETE SET NULL,
     type VARCHAR(100) NOT NULL DEFAULT 'Call Waiter',
-    status VARCHAR(50) NOT NULL DEFAULT 'Pending' CHECK (status IN ('Pending', 'Attended', 'Resolved')),
+    status VARCHAR(50) NOT NULL DEFAULT 'Pending',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

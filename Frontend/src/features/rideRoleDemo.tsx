@@ -19,7 +19,7 @@ interface DeliveryOrder {
   paymentMethod?: string
 }
 
-const API_BASE_URL = 'http://localhost:5000/api'
+import { API_BASE_URL } from '../utils/api'
 
 // Fallback initial delivery orders matching POS theme
 const INITIAL_DELIVERIES: DeliveryOrder[] = [

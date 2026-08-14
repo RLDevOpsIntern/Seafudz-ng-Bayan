@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import AccordionGallery from '../components/AccordionGallery';
+import ClickStack from '../components/ClickStack';
 import logo from '../assets/logoseafudsngbayan.png';
 import seafoodBilaoImg from '../assets/seafood_bilao.png';
 import seafoodCajunImg from '../assets/seafood_cajun.png';
@@ -89,10 +91,32 @@ const ARCHIVED_ITEMS: ArchivedItem[] = [
 ];
 
 const Dashboard: React.FC = () => {
-  const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('All');
   const [selectedItem, setSelectedItem] = useState<ArchivedItem | null>(null);
   const [isArchiveVisible, setIsArchiveVisible] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [activeNav, setActiveNav] = useState<'home' | 'story' | 'archive'>('home');
   const archiveRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 40);
+
+      // Auto update active link based on scroll position
+      const storyEl = document.getElementById('our-story');
+      const archiveEl = document.getElementById('seafood-archive');
+
+      if (archiveEl && archiveEl.getBoundingClientRect().top <= 300) {
+        setActiveNav('archive');
+      } else if (storyEl && storyEl.getBoundingClientRect().top <= 300) {
+        setActiveNav('story');
+      } else {
+        setActiveNav('home');
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -111,34 +135,110 @@ const Dashboard: React.FC = () => {
     return () => observer.disconnect();
   }, []);
 
-  const filteredItems = activeCategoryFilter === 'All' 
-    ? ARCHIVED_ITEMS 
-    : ARCHIVED_ITEMS.filter(item => item.category === activeCategoryFilter);
+  const scrollToHome = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setActiveNav('home');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const scrollToStory = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setActiveNav('story');
+    document.getElementById('our-story')?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   const scrollToArchive = (e: React.MouseEvent) => {
     e.preventDefault();
+    setActiveNav('archive');
     document.getElementById('seafood-archive')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
     <div className="font-sans text-neutral-800 bg-[#faf9f6] min-h-screen">
-      {/* Navbar */}
-      <nav className="flex justify-between items-center py-4 px-[4%] bg-white sticky top-0 z-50 border-b border-neutral-200/80 md:flex-row flex-col gap-4 md:gap-0 shadow-2xs">
-        <div>
-          <span className="text-xl font-bold text-neutral-900 tracking-tight">
-            Seafudz Ng Bayan
-          </span>
-        </div>
+      {/* Dynamic Centered Topbar (Transparent at top, Floating White Pill on Scroll) */}
+      <header className="fixed top-5 inset-x-0 z-50 flex justify-center px-4 pointer-events-none transition-all duration-300">
+        <nav className={`pointer-events-auto flex items-center justify-between w-full max-w-4xl px-4 py-2.5 rounded-2xl transition-all duration-300 ${
+          isScrolled
+            ? 'bg-white border border-neutral-200/90 shadow-[0_10px_30px_rgba(0,0,0,0.12)]'
+            : 'bg-transparent border border-transparent'
+        }`}>
+          {/* Logo */}
+          <Link to="/" onClick={scrollToHome} className="flex items-center gap-2.5 group">
+            <div className="w-9 h-9 rounded-xl bg-orange-600 flex items-center justify-center text-white font-bold text-lg shadow-sm group-hover:scale-105 transition-transform">
+              S
+            </div>
+            <span className={`text-sm font-bold tracking-tight font-serif transition-colors ${
+              isScrolled ? 'text-neutral-900' : 'text-white drop-shadow-md'
+            }`}>
+              Seafudz Ng Bayan
+            </span>
+          </Link>
 
-        <div className="flex items-center gap-6">
-          <Link to="/dashboard" className="text-orange-600 font-semibold text-sm">Dashboard</Link>
-          <Link to="/about" className="text-neutral-600 hover:text-neutral-900 font-medium text-sm transition-colors">About Us</Link>
-          <Link to="/pos" className="text-neutral-600 hover:text-neutral-900 font-medium text-sm transition-colors">Menu</Link>
-          <a href="#seafood-archive" onClick={scrollToArchive} className="text-neutral-600 hover:text-neutral-900 font-medium text-sm transition-colors">Seafood Archive</a>
-        </div>
+          {/* Centered Nav Links */}
+          <div className={`hidden md:flex items-center gap-7 px-5 py-1.5 rounded-full transition-all duration-300 ${
+            isScrolled ? 'bg-neutral-100/70 border border-neutral-200/50' : 'bg-transparent'
+          }`}>
+            <a 
+              href="#" 
+              onClick={scrollToHome} 
+              className={`relative text-xs font-semibold py-1 transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${
+                activeNav === 'home'
+                  ? 'text-orange-500 font-bold'
+                  : isScrolled 
+                    ? 'text-neutral-600 hover:text-orange-600' 
+                    : 'text-neutral-200 hover:text-orange-400 drop-shadow-md'
+              }`}
+            >
+              Home
+              <span className={`absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500 rounded-full transition-all duration-300 ease-out ${
+                activeNav === 'home' ? 'w-full opacity-100' : 'w-0 opacity-0'
+              }`} />
+            </a>
+            <a 
+              href="#our-story" 
+              onClick={scrollToStory} 
+              className={`relative text-xs font-semibold py-1 transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${
+                activeNav === 'story'
+                  ? 'text-orange-500 font-bold'
+                  : isScrolled 
+                    ? 'text-neutral-600 hover:text-orange-600' 
+                    : 'text-neutral-200 hover:text-orange-400 drop-shadow-md'
+              }`}
+            >
+              Our Story
+              <span className={`absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500 rounded-full transition-all duration-300 ease-out ${
+                activeNav === 'story' ? 'w-full opacity-100' : 'w-0 opacity-0'
+              }`} />
+            </a>
+            <a 
+              href="#seafood-archive" 
+              onClick={scrollToArchive} 
+              className={`relative text-xs font-semibold py-1 transition-all duration-300 ease-out hover:scale-105 active:scale-95 ${
+                activeNav === 'archive'
+                  ? 'text-orange-500 font-bold'
+                  : isScrolled 
+                    ? 'text-neutral-600 hover:text-orange-600' 
+                    : 'text-neutral-200 hover:text-orange-400 drop-shadow-md'
+              }`}
+            >
+              Archive
+              <span className={`absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500 rounded-full transition-all duration-300 ease-out ${
+                activeNav === 'archive' ? 'w-full opacity-100' : 'w-0 opacity-0'
+              }`} />
+            </a>
+          </div>
 
-        <Link to="/login" className="bg-orange-600 hover:bg-orange-700 text-white py-2 px-5 rounded-xl font-semibold text-sm transition-all shadow-2xs">Login / Register</Link>
-      </nav>
+          {/* Action Button */}
+          <Link 
+            to="/login" 
+            className={`flex items-center gap-2 text-white text-xs font-semibold px-4.5 py-2 rounded-xl transition-all shadow-md hover:scale-102 active:scale-98 ${
+              isScrolled ? 'bg-neutral-900 hover:bg-orange-600' : 'bg-orange-600 hover:bg-orange-500'
+            }`}
+          >
+            <span>Login / Register</span>
+          </Link>
+        </nav>
+      </header>
 
       {/* Hero Section */}
       <div 
@@ -149,9 +249,9 @@ const Dashboard: React.FC = () => {
       >
         <div className="max-w-[750px] animate-fade-in-up">
           <h1 className="text-3xl md:text-5xl font-extrabold mb-4 tracking-tight leading-tight">Welcome to Seafudz Ng Bayan</h1>
-          <p className="text-base md:text-lg font-normal tracking-wide mb-8 text-neutral-200">Fresh Seafood • Dine-in • Take-out • Delivery</p>
+          <p className="text-base md:text-lg font-normal tracking-wide mb-8 text-neutral-100">Fresh Seafood • Dine-in • Take-out • Delivery</p>
           <div className="flex gap-4 justify-center flex-wrap">
-            <Link to="/customer" className="py-3.5 px-8 rounded-xl font-semibold text-sm transition-all bg-orange-600 hover:bg-orange-700 text-white shadow-2xs hover:scale-105 active:scale-95">
+            <Link to="/customer" className="py-3.5 px-8 rounded-xl font-semibold text-sm transition-all bg-orange-600 hover:bg-orange-700 text-white shadow-md hover:scale-105 active:scale-95">
               Order Now
             </Link>
             <a href="#seafood-archive" onClick={scrollToArchive} className="py-3.5 px-8 rounded-xl font-semibold text-sm transition-all bg-white/10 text-white border border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95">
@@ -162,36 +262,226 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Why Choose Us Section */}
-      <div className="py-16 px-6 md:py-20 md:px-[8%] max-w-[1200px] mx-auto text-center">
-        <h2 className="text-2xl md:text-3xl font-bold text-neutral-900 mb-3 tracking-tight">Why Choose Us?</h2>
-        <p className="text-sm md:text-base text-neutral-500 max-w-[600px] mx-auto mb-12 leading-relaxed">
-          We source the finest, freshest catch daily to bring you authentic and delicious seafood experiences.
-        </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white p-8 rounded-2xl border border-neutral-200/80 shadow-2xs transition-all hover:border-neutral-300 text-left hover:-translate-y-1 duration-200">
-            <h3 className="text-base font-bold text-neutral-900 mb-2">Fresh Catch Daily</h3>
-            <p className="text-xs text-neutral-500 leading-relaxed">Direct from local fishports to our kitchens, ensuring maximum freshness and flavor.</p>
-          </div>
-          <div className="bg-white p-8 rounded-2xl border border-neutral-200/80 shadow-2xs transition-all hover:border-neutral-300 text-left hover:-translate-y-1 duration-200">
-            <h3 className="text-base font-bold text-neutral-900 mb-2">6 Branches</h3>
-            <p className="text-xs text-neutral-500 leading-relaxed">Conveniently located across the city to satisfy your seafood cravings anywhere.</p>
-          </div>
-          <div className="bg-white p-8 rounded-2xl border border-neutral-200/80 shadow-2xs transition-all hover:border-neutral-300 text-left hover:-translate-y-1 duration-200">
-            <h3 className="text-base font-bold text-neutral-900 mb-2">Fast Delivery</h3>
-            <p className="text-xs text-neutral-500 leading-relaxed">Quick hot-and-fresh delivery right to your doorstep, anytime you want.</p>
-          </div>
-          <div className="bg-white p-8 rounded-2xl border border-neutral-200/80 shadow-2xs transition-all hover:border-neutral-300 text-left hover:-translate-y-1 duration-200">
-            <h3 className="text-base font-bold text-neutral-900 mb-2">Warm Service</h3>
-            <p className="text-xs text-neutral-500 leading-relaxed">Our friendly staff is dedicated to giving you the best dining experience.</p>
+      <section className="py-24 px-6 md:px-[8%] bg-gradient-to-b from-[#faf9f6] via-[#e4dec3]/40 to-[#b0d3ce]/30 text-center relative overflow-hidden">
+        {/* Subtle background glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-r from-[#0a9396]/20 to-[#94d2bd]/30 blur-3xl rounded-full pointer-events-none -z-10" />
+
+        <div className="max-w-[1200px] mx-auto">
+          <span className="text-xs font-semibold tracking-widest text-[#005f73] uppercase mb-2 block">
+            The Seafudz Experience
+          </span>
+          <h2 className="text-3xl md:text-4xl font-bold text-[#002d3c] mb-4 tracking-tight">
+            Why Choose Us?
+          </h2>
+          <p className="text-sm md:text-base text-neutral-600 max-w-[620px] mx-auto mb-14 leading-relaxed">
+            We source the finest, freshest catch daily from local fishports to bring you authentic, mouth-watering seafood feasts.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Card 1 */}
+            <div className="group bg-white/90 backdrop-blur-sm p-8 rounded-3xl border border-white/60 shadow-sm hover:shadow-xl hover:border-[#0a9396]/40 text-left transition-all duration-300 hover:-translate-y-2 relative overflow-hidden">
+              <div className="w-12 h-12 rounded-2xl bg-[#0a9396]/10 border border-[#0a9396]/20 text-[#0a9396] flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-[#0a9396] group-hover:text-white transition-all duration-300">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-[#002d3c] mb-2.5 tracking-tight group-hover:text-[#0a9396] transition-colors">
+                Fresh Catch Daily
+              </h3>
+              <p className="text-xs text-neutral-600 leading-relaxed">
+                Directly sourced from local fishports every morning, preserving prime freshness and ocean sweetness.
+              </p>
+            </div>
+
+            {/* Card 2 */}
+            <div className="group bg-white/90 backdrop-blur-sm p-8 rounded-3xl border border-white/60 shadow-sm hover:shadow-xl hover:border-[#0a9396]/40 text-left transition-all duration-300 hover:-translate-y-2 relative overflow-hidden">
+              <div className="w-12 h-12 rounded-2xl bg-[#0a9396]/10 border border-[#0a9396]/20 text-[#0a9396] flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-[#0a9396] group-hover:text-white transition-all duration-300">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-[#002d3c] mb-2.5 tracking-tight group-hover:text-[#0a9396] transition-colors">
+                6 Prime Branches
+              </h3>
+              <p className="text-xs text-neutral-600 leading-relaxed">
+                Conveniently located across major hubs, bringing rich seafood bilao feasts right around your corner.
+              </p>
+            </div>
+
+            {/* Card 3 */}
+            <div className="group bg-white/90 backdrop-blur-sm p-8 rounded-3xl border border-white/60 shadow-sm hover:shadow-xl hover:border-[#0a9396]/40 text-left transition-all duration-300 hover:-translate-y-2 relative overflow-hidden">
+              <div className="w-12 h-12 rounded-2xl bg-[#0a9396]/10 border border-[#0a9396]/20 text-[#0a9396] flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-[#0a9396] group-hover:text-white transition-all duration-300">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-[#002d3c] mb-2.5 tracking-tight group-hover:text-[#0a9396] transition-colors">
+                Fast Hot Delivery
+              </h3>
+              <p className="text-xs text-neutral-600 leading-relaxed">
+                Piping hot Cajun boils and fried delights dispatched quickly to your doorstep with insulated thermal care.
+              </p>
+            </div>
+
+            {/* Card 4 */}
+            <div className="group bg-white/90 backdrop-blur-sm p-8 rounded-3xl border border-white/60 shadow-sm hover:shadow-xl hover:border-[#0a9396]/40 text-left transition-all duration-300 hover:-translate-y-2 relative overflow-hidden">
+              <div className="w-12 h-12 rounded-2xl bg-[#0a9396]/10 border border-[#0a9396]/20 text-[#0a9396] flex items-center justify-center mb-6 group-hover:scale-110 group-hover:bg-[#0a9396] group-hover:text-white transition-all duration-300">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 10h47M4 14h16M4 18h12M14.828 14.828a4 4 0 015.656 0l4.242 4.242a4 4 0 01-5.656 5.656l-4.242-4.242a4 4 0 010-5.656z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-[#002d3c] mb-2.5 tracking-tight group-hover:text-[#0a9396] transition-colors">
+                Warm Hospitality
+              </h3>
+              <p className="text-xs text-neutral-600 leading-relaxed">
+                Welcoming Bayanihan service dedicated to ensuring memorable family feasts and hassle-free dining.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Seafood Archive Section - Museum Exhibition Gallery with Scroll Transitions & Animated Swimming Fish */}
-      <div 
+      {/* Our Journey & Business Success Story Section (Stack Card 1) */}
+      <section id="our-story" className="py-28 px-6 md:px-[8%] bg-gradient-to-b from-[#e4dec3]/40 via-[#b0d3ce]/40 to-[#0a9396]/90 text-white relative overflow-hidden sticky top-0 z-20">
+        {/* Ambient Radial Spotlight Background */}
+        <div className="absolute top-1/4 -right-20 w-[600px] h-[600px] bg-gradient-to-br from-[#0a9396]/30 via-[#94d2bd]/30 to-transparent blur-[140px] rounded-full pointer-events-none" />
+        <div className="absolute -bottom-20 -left-20 w-[500px] h-[500px] bg-gradient-to-tr from-[#005f73]/40 via-[#0a9396]/20 to-transparent blur-[120px] rounded-full pointer-events-none" />
+
+        <div className="max-w-[1250px] mx-auto relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-14 items-center">
+            {/* Left Content Column */}
+            <div className="lg:col-span-6 space-y-7 text-left">
+              {/* Floating Pill Tag */}
+              <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-[#005f73]/30 border border-[#005f73]/40 backdrop-blur-md text-[#005f73] text-xs font-bold tracking-wider uppercase shadow-lg">
+                <span className="w-2 h-2 rounded-full bg-[#005f73] animate-pulse shadow-[0_0_10px_#005f73]" />
+                Our Story & Business Impact
+              </div>
+
+              {/* Headline */}
+              <h2 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.15] font-serif text-[#002d3c]">
+                From a Street Stall to <br className="hidden sm:block" />
+                <span className="bg-gradient-to-r from-[#005f73] via-[#0a9396] to-[#002d3c] bg-clip-text text-transparent drop-shadow-sm">
+                  6 Flourishing Branches
+                </span>
+              </h2>
+
+              {/* Story Narrative */}
+              <p className="text-[#002d3c] text-sm sm:text-base leading-relaxed font-medium">
+                Founded with a deep passion for authentic Filipino culinary traditions, <strong className="text-[#005f73]">Seafudz Ng Bayan</strong> started as a modest neighborhood setup. Driven by our signature butter garlic and Cajun boils, we grew into a multi-branch seafood destination beloved by seafood enthusiasts across the region.
+              </p>
+              
+              <p className="text-[#005f73] text-xs sm:text-sm leading-relaxed border-l-2 border-[#005f73] pl-4 italic font-semibold">
+                "By maintaining direct daily partnerships with local coastal fishermen and enforcing zero-compromise freshness, we ensure every bilao serves ocean sweetness straight to your family's table."
+              </p>
+
+              {/* Glowing Impact Stats Cards */}
+              <div className="pt-2 grid grid-cols-3 gap-4">
+                <div className="group bg-white/90 backdrop-blur-xl border border-[#0a9396]/30 p-5 rounded-2xl hover:border-[#005f73] transition-all duration-300 hover:-translate-y-1 shadow-xl">
+                  <span className="text-3xl sm:text-4xl font-extrabold text-[#005f73] font-serif block group-hover:scale-105 transition-transform">
+                    250K+
+                  </span>
+                  <span className="text-[10px] sm:text-[11px] text-[#002d3c] uppercase tracking-widest font-bold block mt-1">
+                    Bilaos Served
+                  </span>
+                </div>
+
+                <div className="group bg-white/90 backdrop-blur-xl border border-[#0a9396]/30 p-5 rounded-2xl hover:border-[#005f73] transition-all duration-300 hover:-translate-y-1 shadow-xl">
+                  <span className="text-3xl sm:text-4xl font-extrabold text-[#0a9396] font-serif block group-hover:scale-105 transition-transform">
+                    6
+                  </span>
+                  <span className="text-[10px] sm:text-[11px] text-[#002d3c] uppercase tracking-widest font-bold block mt-1">
+                    Active Branches
+                  </span>
+                </div>
+
+                <div className="group bg-white/90 backdrop-blur-xl border border-[#0a9396]/30 p-5 rounded-2xl hover:border-[#005f73] transition-all duration-300 hover:-translate-y-1 shadow-xl">
+                  <span className="text-3xl sm:text-4xl font-extrabold text-[#005f73] font-serif block group-hover:scale-105 transition-transform">
+                    50+
+                  </span>
+                  <span className="text-[10px] sm:text-[11px] text-[#002d3c] uppercase tracking-widest font-bold block mt-1">
+                    Local Fishermen
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Interactive Milestone Cards Grid */}
+            <div className="lg:col-span-6 grid grid-cols-1 sm:grid-cols-2 gap-5 pt-4 lg:pt-0">
+              {/* Milestone 1 */}
+              <div className="group bg-white/90 backdrop-blur-xl p-7 rounded-3xl border border-[#0a9396]/30 text-left hover:border-[#005f73] transition-all duration-300 hover:-translate-y-1.5 shadow-xl relative overflow-hidden">
+                <div className="w-10 h-10 rounded-xl bg-[#0a9396]/20 border border-[#0a9396]/30 text-[#005f73] flex items-center justify-center text-xs font-bold font-mono mb-4 group-hover:bg-[#005f73] group-hover:text-white transition-all">
+                  01
+                </div>
+                <span className="text-[11px] font-mono text-[#005f73] font-bold tracking-widest block mb-1">
+                  2021 • THE HUMBLE BEGINNING
+                </span>
+                <h4 className="text-lg font-bold text-[#002d3c] mb-2 group-hover:text-[#0a9396] transition-colors">
+                  First Street Stall
+                </h4>
+                <p className="text-xs text-neutral-700 leading-relaxed">
+                  Started in a small neighborhood setup with 1 signature Cajun sauce recipe and a vision to serve affordable fresh seafood.
+                </p>
+              </div>
+
+              {/* Milestone 2 */}
+              <div className="group bg-white/90 backdrop-blur-xl p-7 rounded-3xl border border-[#0a9396]/30 text-left hover:border-[#005f73] transition-all duration-300 hover:-translate-y-1.5 shadow-xl relative overflow-hidden sm:translate-y-6">
+                <div className="w-10 h-10 rounded-xl bg-[#0a9396]/20 border border-[#0a9396]/30 text-[#0a9396] flex items-center justify-center text-xs font-bold font-mono mb-4 group-hover:bg-[#0a9396] group-hover:text-white transition-all">
+                  02
+                </div>
+                <span className="text-[11px] font-mono text-[#0a9396] font-bold tracking-widest block mb-1">
+                  2022 • EXPANSION
+                </span>
+                <h4 className="text-lg font-bold text-[#002d3c] mb-2 group-hover:text-[#0a9396] transition-colors">
+                  Bilao Feast Concept
+                </h4>
+                <p className="text-xs text-neutral-700 leading-relaxed">
+                  Pioneered large family-style bilao seafood platters, expanding rapidly to 3 main branches across the bay area.
+                </p>
+              </div>
+
+              {/* Milestone 3 */}
+              <div className="group bg-white/90 backdrop-blur-xl p-7 rounded-3xl border border-[#0a9396]/30 text-left hover:border-[#005f73] transition-all duration-300 hover:-translate-y-1.5 shadow-xl relative overflow-hidden">
+                <div className="w-10 h-10 rounded-xl bg-[#0a9396]/20 border border-[#0a9396]/30 text-[#005f73] flex items-center justify-center text-xs font-bold font-mono mb-4 group-hover:bg-[#005f73] group-hover:text-white transition-all">
+                  03
+                </div>
+                <span className="text-[11px] font-mono text-[#005f73] font-bold tracking-widest block mb-1">
+                  2024 • DIGITAL TRANSFORMATION
+                </span>
+                <h4 className="text-lg font-bold text-[#002d3c] mb-2 group-hover:text-[#0a9396] transition-colors">
+                  Cloud POS & Express Delivery
+                </h4>
+                <p className="text-xs text-neutral-700 leading-relaxed">
+                  Integrated real-time kitchen tracking & online ordering system, guaranteeing hot delivery within 30 minutes.
+                </p>
+              </div>
+
+              {/* Milestone 4 */}
+              <div className="group bg-white/90 backdrop-blur-xl p-7 rounded-3xl border border-[#0a9396]/30 text-left hover:border-[#005f73] transition-all duration-300 hover:-translate-y-1.5 shadow-xl relative overflow-hidden sm:translate-y-6">
+                <div className="w-10 h-10 rounded-xl bg-[#0a9396]/20 border border-[#0a9396]/30 text-[#0a9396] flex items-center justify-center text-xs font-bold font-mono mb-4 group-hover:bg-[#0a9396] group-hover:text-white transition-all">
+                  04
+                </div>
+                <span className="text-[11px] font-mono text-[#0a9396] font-bold tracking-widest block mb-1">
+                  TODAY & BEYOND
+                </span>
+                <h4 className="text-lg font-bold text-[#002d3c] mb-2 group-hover:text-[#0a9396] transition-colors">
+                  6 Branches & Growing
+                </h4>
+                <p className="text-xs text-neutral-700 leading-relaxed">
+                  Proudly employing local staff and supporting coastal fishing communities with every bilao order.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Seafood Archive Section (Sticky Card 2 - Holds in place while content & attached sections scroll) */}
+      <div
         ref={archiveRef}
-        id="seafood-archive" 
-        className="py-24 px-6 md:px-[8%] bg-[#0c0c0d] text-white relative border-t border-neutral-800/80 overflow-hidden"
+        id="seafood-archive"
+        className="py-28 px-6 md:px-[8%] bg-gradient-to-b from-[#0a9396] via-[#005f73] to-[#002d3c] text-white relative overflow-hidden sticky top-0 z-30 shadow-[0_-25px_60px_rgba(0,0,0,0.3)] rounded-t-[40px]"
       >
         <style>{`
           @keyframes swimRight {
@@ -227,62 +517,30 @@ const Dashboard: React.FC = () => {
         `}</style>
 
         {/* Subtle ambient spotlight background effect */}
-        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-gradient-to-tr from-orange-900/10 via-amber-700/5 to-transparent rounded-full blur-3xl pointer-events-none transition-opacity duration-1000 ${isArchiveVisible ? 'opacity-100' : 'opacity-0'}`}></div>
+        <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-gradient-to-tr from-[#94d2bd]/20 via-[#0a9396]/10 to-transparent rounded-full blur-3xl pointer-events-none transition-opacity duration-1000 ${isArchiveVisible ? 'opacity-100' : 'opacity-0'}`}></div>
 
-        {/* Animated Background Swimming Fish Silhouettes (School of Fish with realistic body wiggle) */}
+        {/* Animated Background Swimming Fish Silhouettes */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-          {/* Fish 1 - Large Slow Swimming Right */}
           <div className="absolute top-12 left-0 animate-[swimRight_24s_ease-in-out_infinite] opacity-25">
-            <svg className="w-24 h-12 text-orange-500/30 animate-[fishWiggle_1.8s_ease-in-out_infinite]" viewBox="0 0 100 60" fill="currentColor">
+            <svg className="w-24 h-12 text-white/40 animate-[fishWiggle_1.8s_ease-in-out_infinite]" viewBox="0 0 100 60" fill="currentColor">
               <path d="M10,30 Q35,5 65,30 Q35,55 10,30 Z M65,30 L92,12 L82,30 L92,48 Z M40,14 Q52,6 58,14" />
             </svg>
           </div>
 
-          {/* Fish 2 - Medium Swimming Left */}
           <div className="absolute top-1/4 left-0 animate-[swimLeft_28s_ease-in-out_infinite] opacity-20" style={{ animationDelay: '3s' }}>
-            <svg className="w-20 h-10 text-amber-500/25 animate-[fishWiggle_1.5s_ease-in-out_infinite]" viewBox="0 0 100 60" fill="currentColor">
+            <svg className="w-20 h-10 text-[#94d2bd]/35 animate-[fishWiggle_1.5s_ease-in-out_infinite]" viewBox="0 0 100 60" fill="currentColor">
               <path d="M10,30 Q35,5 65,30 Q35,55 10,30 Z M65,30 L92,12 L82,30 L92,48 Z M40,14 Q52,6 58,14" />
             </svg>
           </div>
 
-          {/* Fish 3 - Small Fast Swimming Right */}
           <div className="absolute top-1/3 left-0 animate-[swimRight_14s_ease-in-out_infinite] opacity-30" style={{ animationDelay: '1s' }}>
-            <svg className="w-14 h-7 text-orange-400/30 animate-[fishWiggle_1.2s_ease-in-out_infinite]" viewBox="0 0 100 60" fill="currentColor">
+            <svg className="w-14 h-7 text-white/40 animate-[fishWiggle_1.2s_ease-in-out_infinite]" viewBox="0 0 100 60" fill="currentColor">
               <path d="M10,30 Q35,5 65,30 Q35,55 10,30 Z M65,30 L92,12 L82,30 L92,48 Z M40,14 Q52,6 58,14" />
             </svg>
           </div>
 
-          {/* Fish 4 - Small School Follower 1 */}
-          <div className="absolute top-[36%] left-0 animate-[swimRight_14s_ease-in-out_infinite] opacity-25" style={{ animationDelay: '1.8s' }}>
-            <svg className="w-10 h-5 text-amber-400/25 animate-[fishWiggle_1.1s_ease-in-out_infinite]" viewBox="0 0 100 60" fill="currentColor">
-              <path d="M10,30 Q35,5 65,30 Q35,55 10,30 Z M65,30 L92,12 L82,30 L92,48 Z M40,14 Q52,6 58,14" />
-            </svg>
-          </div>
-
-          {/* Fish 5 - Medium Swimming Left Fast */}
-          <div className="absolute top-1/2 left-0 animate-[swimLeft_16s_ease-in-out_infinite] opacity-20" style={{ animationDelay: '5s' }}>
-            <svg className="w-18 h-9 text-orange-600/25 animate-[fishWiggle_1.4s_ease-in-out_infinite]" viewBox="0 0 100 60" fill="currentColor">
-              <path d="M10,30 Q35,5 65,30 Q35,55 10,30 Z M65,30 L92,12 L82,30 L92,48 Z M40,14 Q52,6 58,14" />
-            </svg>
-          </div>
-
-          {/* Fish 6 - Diagonal Swimming Fish */}
-          <div className="absolute top-[65%] left-0 animate-[swimDiagonal_22s_ease-in-out_infinite] opacity-20" style={{ animationDelay: '2s' }}>
-            <svg className="w-22 h-11 text-amber-600/20 animate-[fishWiggle_1.7s_ease-in-out_infinite]" viewBox="0 0 100 60" fill="currentColor">
-              <path d="M10,30 Q35,5 65,30 Q35,55 10,30 Z M65,30 L92,12 L82,30 L92,48 Z M40,14 Q52,6 58,14" />
-            </svg>
-          </div>
-
-          {/* Fish 7 - Bottom Swimming Right Med */}
           <div className="absolute bottom-16 left-0 animate-[swimRight_19s_ease-in-out_infinite] opacity-25" style={{ animationDelay: '7s' }}>
-            <svg className="w-16 h-8 text-orange-500/25 animate-[fishWiggle_1.6s_ease-in-out_infinite]" viewBox="0 0 100 60" fill="currentColor">
-              <path d="M10,30 Q35,5 65,30 Q35,55 10,30 Z M65,30 L92,12 L82,30 L92,48 Z M40,14 Q52,6 58,14" />
-            </svg>
-          </div>
-
-          {/* Fish 8 - Small Follower Bottom */}
-          <div className="absolute bottom-12 left-0 animate-[swimRight_19s_ease-in-out_infinite] opacity-20" style={{ animationDelay: '8s' }}>
-            <svg className="w-12 h-6 text-amber-400/20 animate-[fishWiggle_1.3s_ease-in-out_infinite]" viewBox="0 0 100 60" fill="currentColor">
+            <svg className="w-16 h-8 text-[#94d2bd]/35 animate-[fishWiggle_1.6s_ease-in-out_infinite]" viewBox="0 0 100 60" fill="currentColor">
               <path d="M10,30 Q35,5 65,30 Q35,55 10,30 Z M65,30 L92,12 L82,30 L92,48 Z M40,14 Q52,6 58,14" />
             </svg>
           </div>
@@ -290,79 +548,33 @@ const Dashboard: React.FC = () => {
 
         <div className="max-w-[1200px] mx-auto relative z-10">
           {/* Header with scroll reveal */}
-          <div className={`flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14 pb-8 border-b border-neutral-800/80 transition-all duration-700 ease-out ${isArchiveVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
+          <div className={`flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14 pb-8 border-b border-white/20 transition-all duration-700 ease-out ${isArchiveVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}>
             <div>
-              <span className="text-[11px] font-medium tracking-[0.25em] text-orange-500/90 uppercase block mb-2">
+              <span className="text-[11px] font-medium tracking-[0.25em] text-[#e4dec3] uppercase block mb-2 font-mono">
                 Exhibition Gallery
               </span>
               <h2 className="text-3xl md:text-5xl font-light tracking-tight text-white font-serif">
                 Seafood Archive
               </h2>
             </div>
-
-            {/* Filter Tabs */}
-            <div className="flex flex-wrap gap-2">
-              {['All', 'Seasonal', 'Vault Recipe', 'Retired Classic'].map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategoryFilter(cat)}
-                  className={`px-4 py-2 text-xs font-medium tracking-wider uppercase transition-all duration-300 rounded-sm cursor-pointer ${
-                    activeCategoryFilter === cat
-                      ? 'bg-white text-black font-semibold shadow-md scale-105'
-                      : 'text-neutral-400 hover:text-white bg-neutral-900/80 border border-neutral-800 hover:border-neutral-700'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
           </div>
 
-          {/* Museum Exhibition Cards Grid with Staggered Scroll Entrance */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredItems.map((item, idx) => (
-              <div
-                key={item.id}
-                onClick={() => setSelectedItem(item)}
-                style={{ transitionDelay: `${isArchiveVisible ? idx * 120 : 0}ms` }}
-                className={`group bg-neutral-900/40 rounded-sm border border-neutral-800/80 p-3.5 hover:border-neutral-600 transition-all duration-700 ease-out cursor-pointer flex flex-col justify-between hover:shadow-[0_12px_40px_rgba(0,0,0,0.8)] ${
-                  isArchiveVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-95'
-                }`}
-              >
-                {/* Museum Picture Frame */}
-                <div className="relative h-64 bg-neutral-950 overflow-hidden rounded-xs border border-neutral-900">
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="w-full h-full object-cover opacity-85 group-hover:opacity-100 group-hover:scale-108 transition-all duration-700 ease-out"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 100 100'><rect width='100%' height='100%' fill='%23121212'/><text y='55' x='20' font-size='11' fill='%23525252'>EXHIBIT</text></svg>";
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 opacity-60 group-hover:opacity-30 transition-opacity duration-500"></div>
-
-                  {/* Exhibit Tag Overlay */}
-                  <div className="absolute top-3 left-3 text-[10px] font-mono tracking-widest text-neutral-400 bg-black/70 px-2 py-0.5 border border-neutral-800 backdrop-blur-xs">
-                    N° {String(idx + 1).padStart(2, '0')} • {item.yearArchived}
-                  </div>
-                </div>
-
-                {/* Museum Plaque Label */}
-                <div className="pt-4 pb-1 px-1 flex items-center justify-between">
-                  <div>
-                    <h3 className="text-base font-serif tracking-wide text-neutral-100 group-hover:text-orange-400 transition-colors">
-                      {item.name}
-                    </h3>
-                    <p className="text-[11px] tracking-wider text-neutral-500 uppercase mt-0.5">
-                      {item.category}
-                    </p>
-                  </div>
-                  <span className="text-xs text-neutral-500 group-hover:text-white transition-colors">
-                    View
-                  </span>
-                </div>
-              </div>
-            ))}
+          {/* Accordion Gallery UI (ReactBits GSAP Component) */}
+          <div className="w-full">
+            <AccordionGallery
+              items={ARCHIVED_ITEMS.map(item => ({
+                image: item.image,
+                label: `${item.name} (${item.yearArchived})`,
+                alt: item.name
+              }))}
+              accentColor="#94d2bd"
+              overlayColor="#002d3c"
+              height={620}
+              radius={24}
+              tilt={6}
+              grayscale={false}
+              trigger="hover"
+            />
           </div>
 
           {/* Museum Exhibition Lightbox Preview */}
@@ -373,11 +585,11 @@ const Dashboard: React.FC = () => {
             >
               <div 
                 onClick={(e) => e.stopPropagation()}
-                className="bg-neutral-900 border border-neutral-800 rounded-sm max-w-2xl w-full overflow-hidden shadow-2xl relative text-left animate-in zoom-in-95 duration-300"
+                className="bg-[#002d3c] border border-[#0a9396]/40 rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl relative text-left animate-in zoom-in-95 duration-300"
               >
                 <div className="relative h-80 md:h-96 bg-black">
                   <img src={selectedItem.image} alt={selectedItem.name} className="w-full h-full object-cover" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-neutral-900 via-transparent to-transparent"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#002d3c] via-transparent to-transparent"></div>
                   
                   <button 
                     onClick={() => setSelectedItem(null)}
@@ -387,7 +599,7 @@ const Dashboard: React.FC = () => {
                   </button>
 
                   <div className="absolute bottom-4 left-6 right-6">
-                    <span className="text-[10px] font-mono tracking-widest text-orange-400 uppercase block mb-1">
+                    <span className="text-[10px] font-mono tracking-widest text-[#94d2bd] uppercase block mb-1">
                       Archive Exhibit • {selectedItem.yearArchived}
                     </span>
                     <h3 className="text-2xl md:text-3xl font-serif text-white">{selectedItem.name}</h3>
@@ -395,11 +607,11 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 <div className="p-6 md:p-8 space-y-4">
-                  <p className="text-sm text-neutral-300 font-serif leading-relaxed italic border-l-2 border-orange-500/80 pl-4">
+                  <p className="text-sm text-neutral-200 font-serif leading-relaxed italic border-l-2 border-[#94d2bd] pl-4">
                     "{selectedItem.description}"
                   </p>
 
-                  <div className="flex items-center justify-between text-xs text-neutral-400 pt-4 border-t border-neutral-800 font-mono">
+                  <div className="flex items-center justify-between text-xs text-neutral-300 pt-4 border-t border-white/10 font-mono">
                     <span>CATEGORY: {selectedItem.category.toUpperCase()}</span>
                     <span>STATUS: {selectedItem.status.toUpperCase()}</span>
                   </div>
@@ -407,7 +619,7 @@ const Dashboard: React.FC = () => {
                   <div className="pt-2 flex justify-end">
                     <button
                       onClick={() => setSelectedItem(null)}
-                      className="bg-white text-black hover:bg-neutral-200 text-xs font-semibold px-6 py-2.5 rounded-sm transition-colors cursor-pointer"
+                      className="bg-[#0a9396] text-white hover:bg-[#005f73] text-xs font-semibold px-6 py-2.5 rounded-xl transition-colors cursor-pointer"
                     >
                       Close Exhibit
                     </button>
@@ -417,12 +629,104 @@ const Dashboard: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Frequently Asked Questions (2-Column Layout: Sticky Title on Left, Scroll-Stacked FAQ Cards on Right) */}
+        <div className="max-w-[1250px] mx-auto pt-28 border-t border-white/10 mt-24">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start relative">
+            {/* Left Column: Sticky Title & Subtitle Header */}
+            <div className="lg:col-span-5 lg:sticky lg:top-28 space-y-4 text-left">
+              <span className="text-xs font-semibold tracking-widest text-[#94d2bd] uppercase block">
+                Got Questions?
+              </span>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight font-serif">
+                Frequently Asked Questions
+              </h2>
+              <p className="text-sm sm:text-base text-neutral-300 leading-relaxed max-w-md pt-2">
+                Everything you need to know about our seafood bilao orders, delivery coverage, and catering services.
+              </p>
+              
+              <div className="pt-6 hidden lg:block">
+                <div className="inline-flex items-center gap-3 px-4 py-2 rounded-2xl bg-white/10 border border-[#94d2bd]/30 backdrop-blur-md text-[#94d2bd] text-xs font-medium font-mono">
+                  <span className="w-2 h-2 rounded-full bg-[#94d2bd] animate-ping" />
+                  Scroll to view stacked answers
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: ReactBits ClickStack Component */}
+            <div className="lg:col-span-7 text-left relative min-h-[480px]">
+              <ClickStack
+                items={FAQ_ITEMS.map((item, index) => ({
+                  id: `faq-${index}`,
+                  title: item.question,
+                  content: item.answer,
+                  subtitle: `FAQ EXHIBIT 0${index + 1}`,
+                  badge: `0${index + 1}`
+                }))}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Branch Locations & Exclusive Offerings */}
+        <div className="max-w-[1200px] mx-auto text-center pt-28 border-t border-white/10 mt-24">
+          <span className="text-xs font-semibold tracking-widest text-[#94d2bd] uppercase mb-2 block font-mono">
+            New Horizon • Coming Soon
+          </span>
+          <h2 className="text-3xl md:text-5xl font-bold text-white mb-6 font-serif">
+            Branch Locations & Exclusive Offerings
+          </h2>
+          <p className="text-sm md:text-base text-neutral-300 max-w-2xl mx-auto mb-12 leading-relaxed">
+            Stay tuned for our upcoming branch locator, live table reservation system, and seasonal seafood tasting experiences across Metro Manila.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+            <div className="bg-[#001e28]/90 border border-[#0a9396]/30 p-8 rounded-2xl hover:border-[#94d2bd] transition-all">
+              <span className="text-xs font-mono text-[#94d2bd] font-bold block mb-2">01 • MAIN BRANCH</span>
+              <h3 className="text-xl font-bold text-white mb-2">Seafudz Central Bay</h3>
+              <p className="text-xs text-neutral-300">Harbor Drive, Manila Bay Shoreline. Open daily from 10:00 AM to 10:00 PM.</p>
+            </div>
+
+            <div className="bg-[#001e28]/90 border border-[#0a9396]/30 p-8 rounded-2xl hover:border-[#94d2bd] transition-all">
+              <span className="text-xs font-mono text-[#e4dec3] font-bold block mb-2">02 • EXPRESS HUB</span>
+              <h3 className="text-xl font-bold text-white mb-2">Quezon City Hub</h3>
+              <p className="text-xs text-neutral-300">Timog Avenue, Quezon City. Express Bilao Dispatch & Cloud Kitchen POS.</p>
+            </div>
+
+            <div className="bg-[#001e28]/90 border border-[#0a9396]/30 p-8 rounded-2xl hover:border-[#94d2bd] transition-all">
+              <span className="text-xs font-mono text-[#94d2bd] font-bold block mb-2">03 • SOUTH BRANCH</span>
+              <h3 className="text-xl font-bold text-white mb-2">Alabang Coastal</h3>
+              <p className="text-xs text-neutral-300">Filinvest City, Alabang. Family Dining & Outdoor Cajun Boil Pavilion.</p>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
+/* FAQ Items Data */
+const FAQ_ITEMS = [
+  {
+    question: "How far in advance should I order a Seafood Bilao?",
+    answer: "For regular bilao orders, we recommend ordering at least 1-2 hours before your intended mealtime. For large family feasts, bulk orders, or holiday peak seasons, booking 1 day in advance is highly encouraged to guarantee your preferred time slot."
+  },
+  {
+    question: "What delivery coverage area do you support?",
+    answer: "We deliver across Metro Manila and neighboring key areas surrounding our 6 branches! Orders are dispatched using thermal insulated packaging to ensure your seafood arrives piping hot and fresh."
+  },
+  {
+    question: "Can I customize the items inside my Seafood Bilao?",
+    answer: "Yes! You can choose your preferred spice level (Original Garlic Butter, Cajun Mild, Spicy Extra Hot) and add extra items like extra Crabs, Shrimp, Tahong, Sweet Corn, or Garlic Rice directly during checkout."
+  },
+  {
+    question: "Do you offer catering services for events and parties?",
+    answer: "Absolutely! We cater for birthdays, corporate events, and family gatherings with custom seafood boil stations, live cooking setups, and large-scale bilao packages. Contact our team via the Order Online portal for catering inquiries."
+  },
+  {
+    question: "How do I ensure my seafood stays fresh if consuming later?",
+    answer: "If not consuming immediately upon delivery, keep the bilao sealed in its thermal wrap. You can reheat seafood boils in a microwave or skillet with a splash of butter on medium heat for 2-3 minutes."
+  }
+];
+
 export default Dashboard;
-
-
-

@@ -2,7 +2,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { POS } from './features/POS'
 import { KitchenMode } from './features/KitchenMode'
 import { AssistantRole } from './features/AssistantRole'
-import { TableVisualizer } from './features/TableVisualizer'
 import { RideRoleDemo } from './features/rideRoleDemo'
 import { SalesReportCashier } from './features/salesReportCashier'
 import { OnlineCustomer } from './features/OnlineCustomer'
@@ -22,7 +21,6 @@ function App() {
         <Route path="/pos" element={<POS />} />
         <Route path="/kitchen" element={<KitchenMode />} />
         <Route path="/assistant" element={<AssistantRole />} />
-        <Route path="/tables" element={<TableVisualizer />} />
         <Route path="/rider" element={<RideRoleDemo />} />
         <Route path="/sales-report" element={<SalesReportCashier />} />
         <Route path="/customer" element={<OnlineCustomer />} />

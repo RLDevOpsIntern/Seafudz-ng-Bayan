@@ -16,17 +16,17 @@ router.get('/rider/deliveries', async (req, res) => {
                    'menu_item_id', oi.menu_item_id,
                    'quantity', oi.quantity,
                    'unit_price', oi.unit_price,
-                   'subtotal', oi.subtotal,
-                   'name', m.name
+                   'subtotal', (oi.unit_price * oi.quantity),
+                   'name', COALESCE(oi.snapshot_item_name, m.name)
                  )
                ) FILTER (WHERE oi.id IS NOT NULL), '[]'
              ) AS "items"
       FROM orders o
       LEFT JOIN customers c ON o.customer_id = c.id
-      LEFT JOIN employees e ON o.employee_id = e.id
+      LEFT JOIN employees e ON o.rider_id = e.id
       LEFT JOIN order_items oi ON o.id = oi.order_id
       LEFT JOIN menu_items m ON oi.menu_item_id = m.id
-      WHERE LOWER(o.order_type) = 'delivery'
+      WHERE LOWER(o.type) = 'delivery'
       GROUP BY o.id, c.fullname, c.phone, c.delivery_address, e.fullname
       ORDER BY o.created_at DESC
     `;
@@ -55,17 +55,17 @@ router.patch('/rider/deliveries/:id/status', async (req, res) => {
 
     let sql = `
       UPDATE orders
-      SET order_status = $1, updated_at = NOW()
+      SET status = $1, updated_at = NOW()
     `;
     const params = [status];
     let paramIndex = 2;
 
     if (employeeId) {
-      sql += `, employee_id = $${paramIndex++}`;
+      sql += `, rider_id = $${paramIndex++}`;
       params.push(employeeId);
     }
 
-    sql += ` WHERE (id = $${paramIndex} OR order_number = $${paramIndex}) RETURNING *`;
+    sql += ` WHERE id = $${paramIndex} RETURNING *`;
     params.push(id);
 
     const { rows } = await query(sql, params);

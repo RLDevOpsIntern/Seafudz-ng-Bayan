@@ -7,18 +7,19 @@ const router = Router();
 router.get('/tables', async (req, res) => {
   try {
     const sql = `
-      SELECT t.id, t.table_number AS name, t.capacity AS seats, t.status,
-             o.id AS "activeOrderId", o.order_number, o.total_amount, o.order_status, o.created_at AS "orderCreatedAt"
+      SELECT t.id, t.name AS name, t.seats AS seats, t.section, t.status,
+             o.id AS "activeOrderId", o.id AS order_number, o.total AS total_amount, o.status AS order_status, o.created_at AS "orderCreatedAt"
       FROM tables t
-      LEFT JOIN orders o ON t.id = o.table_id AND o.order_status NOT IN ('completed', 'cancelled')
-      ORDER BY t.table_number ASC
+      LEFT JOIN orders o ON t.id = o.table_id AND LOWER(o.status) NOT IN ('completed', 'cancelled')
+      ORDER BY t.name ASC
     `;
     const { rows } = await query(sql);
 
     const formattedTables = rows.map((r) => ({
       id: r.id,
-      name: `Table ${r.name}`,
+      name: r.name && r.name.toLowerCase().startsWith('table') ? r.name : `Table ${r.name}`,
       seats: r.seats,
+      section: r.section,
       status: r.activeOrderId ? 'Occupied' : (r.status || 'Available'),
       activeOrder: r.activeOrderId
         ? {
@@ -55,7 +56,7 @@ router.patch('/tables/:id/status', async (req, res) => {
     const sql = `
       UPDATE tables
       SET status = $1, updated_at = NOW()
-      WHERE id = $2 OR CAST(table_number AS TEXT) = $2
+      WHERE id = $2 OR name = $2
       RETURNING *
     `;
     const { rows } = await query(sql, [status, id]);

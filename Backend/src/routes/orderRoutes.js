@@ -165,21 +165,22 @@ router.post('/orders', async (req, res) => {
 
     // Insert order items
     for (const ci of cartItems) {
-      const menuItemId = ci.item ? ci.item.id : ci.menuItemId;
+      const menuItemId = ci.item ? ci.item.id : (ci.menuItemId || null);
+      const snapshotItemName = ci.item ? ci.item.name : (ci.name || 'Seafood Item');
       const unitPrice = ci.item ? ci.item.price : (ci.price || 0);
-      const itemSubtotal = unitPrice * ci.quantity;
+      const itemNotes = ci.notes || ci.specialNote || null;
 
       const itemSql = `
-        INSERT INTO order_items (order_id, menu_item_id, quantity, unit_price, subtotal, item_notes)
+        INSERT INTO order_items (order_id, menu_item_id, snapshot_item_name, unit_price, quantity, notes)
         VALUES ($1, $2, $3, $4, $5, $6)
       `;
       await client.query(itemSql, [
         createdOrder.id,
         menuItemId,
-        ci.quantity,
+        snapshotItemName,
         unitPrice,
-        itemSubtotal,
-        ci.notes || null,
+        ci.quantity,
+        itemNotes,
       ]);
     }
 
@@ -211,8 +212,8 @@ router.patch('/orders/:id/status', async (req, res) => {
 
     const sql = `
       UPDATE orders
-      SET order_status = $1, updated_at = NOW()
-      WHERE id = $2 OR order_number = $2
+      SET status = $1, updated_at = NOW()
+      WHERE id = $2
       RETURNING *
     `;
     const { rows } = await query(sql, [status, id]);
