@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import AccordionGallery from '../components/AccordionGallery';
 import ClickStack from '../components/ClickStack';
 import ScrollBubbles from '../components/ScrollBubbles';
-import OceanCreatures from '../components/OceanCreatures';
+import { OceanCreatures, ArchiveCreatures } from '../components/OceanCreatures';
+import Footer from '../components/Footer';
 
 import seafoodBilaoImg from '../assets/seafood_bilao.png';
 import seafoodCajunImg from '../assets/seafood_cajun.png';
@@ -410,9 +411,9 @@ const Dashboard: React.FC = () => {
       </div>
 
       {/* Why Choose Us Section */}
-      <section className="py-24 px-6 md:px-[8%] bg-gradient-to-b from-[#faf9f6] via-[#e4dec3]/40 to-[#b0d3ce]/30 text-center relative overflow-hidden">
+      <section className="pt-24 pb-44 px-6 md:px-[8%] bg-gradient-to-b from-[#faf9f6] via-[#faf9f6] to-[#e4dec3]/30 text-center relative overflow-hidden">
         {/* Subtle background glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-r from-[#0a9396]/20 to-[#94d2bd]/30 blur-3xl rounded-full pointer-events-none -z-10" />
+        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-r from-[#0a9396]/20 to-[#94d2bd]/30 blur-3xl rounded-full pointer-events-none -z-10" />
 
         <div className="max-w-[1200px] mx-auto relative z-20">
           <span className="text-xs font-semibold tracking-widest text-[#005f73] uppercase mb-2 block">
@@ -489,11 +490,17 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Smooth Gradient Blend Overlay to merge into Our Story section */}
+        <div className="absolute bottom-0 inset-x-0 h-36 bg-gradient-to-b from-transparent via-[#00b4d8]/40 to-[#00b4d8] pointer-events-none z-10" />
       </section>
 
-      {/* Our Journey & Business Success Story Section (Stack Card 1 - Exact Vivid Sky Blue Theme) */}
-      <section id="our-story" className="py-28 px-6 md:px-[8%] bg-gradient-to-b from-[#00b4d8] via-[#0096c7] to-[#0077b6] text-white relative overflow-hidden sticky top-0 z-20 shadow-[0_-20px_50px_rgba(0,0,0,0.15)] rounded-t-[40px]">
+      {/* Our Journey & Business Success Story Section */}
+      <section id="our-story" className="pt-28 pb-36 px-6 md:px-[8%] bg-gradient-to-b from-[#00b4d8] via-[#0096c7] to-[#0081a7] text-white relative overflow-hidden z-20">
 
+
+        {/* Animated Background Sea Life Component */}
+        <OceanCreatures />
 
         {/* Ambient Radial Spotlight Background */}
         <div className="absolute top-1/4 -right-20 w-[600px] h-[600px] bg-gradient-to-br from-white/20 via-[#caf0f8]/20 to-transparent blur-[140px] rounded-full pointer-events-none" />
@@ -627,11 +634,11 @@ const Dashboard: React.FC = () => {
         </div>
       </section>
 
-      {/* Seafood Archive Section (Sticky Card 2) */}
+      {/* Seafood Archive Section */}
       <div
         ref={archiveRef}
         id="seafood-archive"
-        className="py-28 px-6 md:px-[8%] bg-[#002d3c] text-white relative overflow-hidden sticky top-0 z-30 shadow-[0_-25px_60px_rgba(0,0,0,0.3)] rounded-t-[40px]"
+        className="py-28 px-6 md:px-[8%] bg-gradient-to-b from-[#0081a7] via-25% via-[#002d3c] to-[#001a24] text-white relative overflow-hidden z-30"
       >
 
         <style>{`
@@ -658,8 +665,8 @@ const Dashboard: React.FC = () => {
         {/* Subtle ambient spotlight background effect */}
         <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-gradient-to-tr from-[#94d2bd]/20 via-[#0a9396]/10 to-transparent rounded-full blur-3xl pointer-events-none transition-opacity duration-1000 ${isArchiveVisible ? 'opacity-100' : 'opacity-0'}`}></div>
 
-        {/* Animated Background Sea Life Component */}
-        <OceanCreatures />
+        {/* Animated Background Pawikan & Manta Ray Component */}
+        <ArchiveCreatures />
 
         <div className="max-w-[1200px] mx-auto relative z-10">
           {/* Header with scroll reveal */}
@@ -744,9 +751,14 @@ const Dashboard: React.FC = () => {
             </div>
           )}
         </div>
+      </div>
 
-        {/* Frequently Asked Questions (2-Column Layout: Sticky Title on Left, Scroll-Stacked FAQ Cards on Right) */}
-        <div id="faq-section" className="max-w-[1250px] mx-auto pt-28 border-t border-white/10 mt-24">
+      {/* Rich Gradient Transition Block Between Seafood Archive and FAQ Section */}
+      <div className="w-full h-44 bg-gradient-to-b from-[#001a24] via-[#00121b] to-[#000a12] pointer-events-none relative z-20" />
+
+      {/* Frequently Asked Questions Section (Deep Abyss Gradient) */}
+      <section id="faq-section" className="py-28 px-6 md:px-[8%] bg-gradient-to-b from-[#000a12] via-[#00060c] to-[#000206] text-white relative overflow-hidden z-20">
+        <div className="max-w-[1250px] mx-auto relative z-20">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-start relative">
             {/* Left Column: Sticky Title & Subtitle Header */}
             <div className="lg:col-span-5 lg:sticky lg:top-28 space-y-4 text-left">
@@ -782,9 +794,14 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
+      </section>
 
-        {/* Branch Locations & Exclusive Offerings */}
-        <div className="max-w-[1200px] mx-auto text-center pt-28 border-t border-white/10 mt-24">
+      {/* Branch Locations & Exclusive Offerings Section (Seamless Deep Navy Flow) */}
+      <section className="py-28 px-6 md:px-[8%] bg-gradient-to-b from-[#00060a] via-[#000c14] to-[#00141d] text-white relative overflow-hidden z-10">
+        {/* Smooth Gradient Blend Overlay merging from FAQ Section */}
+        <div className="absolute top-0 inset-x-0 h-28 bg-gradient-to-b from-[#00060a] via-[#00060a]/60 to-transparent pointer-events-none z-10" />
+
+        <div className="max-w-[1200px] mx-auto text-center relative z-20">
           <span className="text-xs font-semibold tracking-widest text-[#94d2bd] uppercase mb-2 block font-mono">
             New Horizon • Coming Soon
           </span>
@@ -815,7 +832,10 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* Landing Page Footer Component */}
+      <Footer />
     </div>
   );
 };

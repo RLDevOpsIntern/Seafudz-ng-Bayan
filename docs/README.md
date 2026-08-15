@@ -84,8 +84,9 @@ Seafudz-ng-Bayan/
 ├── Frontend/                # React POS & Customer Web App (Firebase Hosting)
 │   ├── src/
 │   └── firebase.json
-├── pipeline/                # GCP Cloud Build CI/CD workflow
-│   └── cloudbuild.yml
+├── pipeline/                # GCP Cloud Build
+├── docs/                    # Architectural, setup guides & API readiness report
+│   └── BACKEND_READINESS.md # Complete backend integration readiness breakdown
 ├── docker-compose.yml       # Local PostgreSQL Docker environment
 ├── gcp_cloudsql_schema.sql  # Database schema & initial seed data
 └── DOCKER_POSTGRES_SETUP.md # Detailed Docker database setup documentation
