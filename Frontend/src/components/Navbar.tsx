@@ -1,14 +1,109 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 
 interface NavbarProps {
   searchQuery?: string
   setSearchQuery?: (query: string) => void
 }
 
+interface NavRoleLink {
+  path: string
+  label: string
+  category: 'Operational' | 'Customer' | 'Management'
+  badge?: string
+  icon: React.ReactNode
+}
+
+const NAV_ROLE_LINKS: NavRoleLink[] = [
+  {
+    path: '/customer',
+    label: 'Online Customer',
+    category: 'Customer',
+    icon: (
+      <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+      </svg>
+    )
+  },
+  {
+    path: '/pos',
+    label: 'Cashier POS',
+    category: 'Operational',
+    badge: 'POS',
+    icon: (
+      <svg className="w-4 h-4 text-teal-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+      </svg>
+    )
+  },
+  {
+    path: '/kitchen',
+    label: 'Kitchen Display System',
+    category: 'Operational',
+    badge: 'Live',
+    icon: (
+      <svg className="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+    )
+  },
+  {
+    path: '/assistant',
+    label: 'Assistant Mode',
+    category: 'Operational',
+    icon: (
+      <svg className="w-4 h-4 text-cyan-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+      </svg>
+    )
+  },
+  {
+    path: '/rider',
+    label: 'Rider Delivery Mode',
+    category: 'Operational',
+    icon: (
+      <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
+      </svg>
+    )
+  },
+  {
+    path: '/sales-report',
+    label: 'Sales & Reports',
+    category: 'Management',
+    icon: (
+      <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+      </svg>
+    )
+  },
+  {
+    path: '/account',
+    label: 'Account Settings',
+    category: 'Management',
+    icon: (
+      <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg>
+    )
+  },
+  {
+    path: '/about',
+    label: 'About Seafood ng Bayan',
+    category: 'Customer',
+    icon: (
+      <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    )
+  }
+]
+
 export const Navbar: React.FC<NavbarProps> = ({ searchQuery, setSearchQuery }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+  const location = useLocation()
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -21,143 +116,170 @@ export const Navbar: React.FC<NavbarProps> = ({ searchQuery, setSearchQuery }) =
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  return (
-    <header className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 md:gap-4 bg-white px-4 sm:px-6 py-3.5 sm:py-4 rounded-2xl shadow-xs border border-neutral-100 transition-all">
-      {/* Brand Logo & Name with Dropdown Trigger */}
-      <div className="flex items-center justify-between gap-3 w-full md:w-auto">
-        <div className="relative" ref={menuRef}>
-          <div 
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none group"
-          >
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden border border-neutral-200 bg-neutral-100 flex-shrink-0 transition-transform group-hover:scale-105">
-              <img 
-                src="/src/assets/hero.png" 
-                alt="Seafood ng Bayan Logo" 
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 100 100'><rect width='100%' height='100%' fill='%23e0f2fe'/><text y='70' x='15' font-size='60'>🍤</text></svg>";
-                }}
-              />
-            </div>
-            <div>
-              <h1 className="font-bold text-neutral-800 text-base sm:text-lg leading-tight flex items-center gap-1.5 group-hover:text-orange-600 transition-colors">
-                Seafood ng Bayan
-                <svg className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-neutral-500 transition-transform duration-200 ${isMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
-                </svg>
-              </h1>
-              <p className="text-[11px] sm:text-xs text-neutral-400 font-medium">Restaurant Navigator</p>
-            </div>
-          </div>
+  const getCurrentRoleName = () => {
+    const match = NAV_ROLE_LINKS.find((link) => link.path === location.pathname)
+    return match ? match.label : 'Restaurant Navigator'
+  }
 
-          {/* Dropdown Menu */}
+  return (
+    <header className="relative z-40 bg-white/90 backdrop-blur-xl border border-slate-200/80 rounded-2xl p-3.5 sm:p-4 shadow-lg shadow-slate-200/40 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 transition-all duration-200">
+      
+      {/* Brand & Navigator Dropdown Trigger */}
+      <div className="flex items-center justify-between gap-4 w-full md:w-auto">
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-haspopup="true"
+            aria-expanded={isMenuOpen}
+            className="flex items-center gap-3 cursor-pointer select-none group text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 rounded-xl p-1 -m-1 transition-all"
+          >
+            {/* Logo */}
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-orange-500 to-amber-600 p-0.5 shadow-md shadow-orange-500/20 group-hover:scale-105 transition-transform duration-200 flex-shrink-0">
+              <div className="w-full h-full bg-white rounded-[14px] overflow-hidden flex items-center justify-center">
+                <img
+                  src="/src/assets/hero.png"
+                  alt="Seafood ng Bayan Logo"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src =
+                      "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='48' height='48' viewBox='0 0 100 100'><rect width='100%' height='100%' fill='%23fff7ed'/><text y='68' x='18' font-size='55'>🦞</text></svg>"
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Brand Title & Mode indicator */}
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="font-extrabold text-slate-900 text-base sm:text-lg tracking-tight group-hover:text-orange-600 transition-colors">
+                  Seafood ng Bayan
+                </h1>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-[10px] font-bold uppercase tracking-wider">
+                  Menu
+                  <svg
+                    className={`w-3 h-3 text-slate-500 transition-transform duration-200 ${
+                      isMenuOpen ? 'rotate-180' : ''
+                    }`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </span>
+              </div>
+              <p className="text-xs font-medium text-slate-500">{getCurrentRoleName()}</p>
+            </div>
+          </button>
+
+          {/* Categorized Pro Dropdown Menu */}
           {isMenuOpen && (
-            <div className="absolute left-0 mt-2.5 w-60 bg-white rounded-2xl shadow-xl border border-neutral-100 py-2.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-              <Link 
-                to="/pos" 
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-orange-50 hover:text-orange-600 transition-all"
-              >
-                Cashier POS
-              </Link>
-              <Link 
-                to="/kitchen" 
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-orange-50 hover:text-orange-600 transition-all"
-              >
-                Kitchen Mode
-              </Link>
-              <Link 
-                to="/assistant" 
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-orange-50 hover:text-orange-600 transition-all"
-              >
-                Assistant Mode
-              </Link>
-              <Link 
-                to="/rider" 
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-orange-50 hover:text-orange-600 transition-all"
-              >
-                Rider Mode
-              </Link>
-              <Link 
-                to="/sales-report" 
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-orange-50 hover:text-orange-600 transition-all"
-              >
-                Sales Report
-              </Link>
-              <Link 
-                to="/customer" 
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-orange-50 hover:text-orange-600 transition-all"
-              >
-                Online Customer
-              </Link>
-              <Link 
-                to="/account" 
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-orange-50 hover:text-orange-600 transition-all"
-              >
-                My Account
-              </Link>
-              <Link 
-                to="/about" 
-                onClick={() => setIsMenuOpen(false)}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-neutral-700 hover:bg-orange-50 hover:text-orange-600 transition-all"
-              >
-                About Us
-              </Link>
-              <a 
-                href="#" 
-                onClick={(e) => { e.preventDefault(); setIsMenuOpen(false); }}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-neutral-400 hover:bg-neutral-50 cursor-not-allowed transition-all"
-              >
-                Inventory
-              </a>
-              <a 
-                href="#" 
-                onClick={(e) => { e.preventDefault(); setIsMenuOpen(false); }}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-neutral-400 hover:bg-neutral-50 cursor-not-allowed transition-all"
-              >
-                Settings
-              </a>
-              <hr className="my-2 border-neutral-100" />
-              <a 
-                href="#" 
-                onClick={(e) => { e.preventDefault(); setIsMenuOpen(false); }}
-                className="flex items-center gap-3 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50 transition-all"
-              >
-                Logout
-              </a>
+            <div className="absolute left-0 mt-3 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200/90 p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150 divide-y divide-slate-100">
+              
+              {/* Operational Roles */}
+              <div className="py-1.5">
+                <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 block">
+                  Operational Roles
+                </span>
+                {NAV_ROLE_LINKS.filter((item) => item.category === 'Operational').map((link) => (
+                  <Link
+                    key={link.path}
+                    to={link.path}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                      location.pathname === link.path
+                        ? 'bg-orange-50 text-orange-600 font-bold'
+                        : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      {link.icon}
+                      <span>{link.label}</span>
+                    </div>
+                    {link.badge && (
+                      <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 text-[10px] font-bold">
+                        {link.badge}
+                      </span>
+                    )}
+                  </Link>
+                ))}
+              </div>
+
+              {/* Customer Portal */}
+              <div className="py-1.5">
+                <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 block">
+                  Customer Portal
+                </span>
+                {NAV_ROLE_LINKS.filter((item) => item.category === 'Customer').map((link) => (
+                  <Link
+                    key={link.path}
+                    to={link.path}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                      location.pathname === link.path
+                        ? 'bg-orange-50 text-orange-600 font-bold'
+                        : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
+                  >
+                    {link.icon}
+                    <span>{link.label}</span>
+                  </Link>
+                ))}
+              </div>
+
+              {/* Management */}
+              <div className="py-1.5">
+                <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 block">
+                  Management
+                </span>
+                {NAV_ROLE_LINKS.filter((item) => item.category === 'Management').map((link) => (
+                  <Link
+                    key={link.path}
+                    to={link.path}
+                    onClick={() => setIsMenuOpen(false)}
+                    className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
+                      location.pathname === link.path
+                        ? 'bg-orange-50 text-orange-600 font-bold'
+                        : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                    }`}
+                  >
+                    {link.icon}
+                    <span>{link.label}</span>
+                  </Link>
+                ))}
+              </div>
             </div>
           )}
         </div>
 
-        {/* Profile & Notification controls for Mobile */}
+        {/* Mobile Quick Action Buttons */}
         <div className="flex md:hidden items-center gap-2">
-          <button className="w-9 h-9 rounded-full bg-amber-900/10 flex items-center justify-center text-amber-900 hover:bg-amber-900/20 active:scale-95 transition-all">
+          <button
+            className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-200 active:scale-95 transition-all"
+            aria-label="User Profile"
+          >
             <svg className="w-4.5 h-4.5" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
             </svg>
           </button>
-          <button className="w-9 h-9 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 relative hover:bg-amber-500/20 active:scale-95 transition-all">
+          <button
+            className="w-9 h-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 relative hover:bg-slate-200 active:scale-95 transition-all"
+            aria-label="Notifications"
+          >
             <svg className="w-4.5 h-4.5" fill="currentColor" viewBox="0 0 20 20">
               <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
             </svg>
-            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+            <span className="absolute top-2 right-2 w-2 h-2 bg-orange-600 rounded-full border-2 border-white" />
           </button>
         </div>
       </div>
 
-      {/* Right Section: Search Bar + Profile & Notification Icons */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3 justify-end w-full md:w-auto">
+      {/* Right Controls: Search Bar & Account Controls */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 justify-end w-full md:w-auto">
         {searchQuery !== undefined && setSearchQuery !== undefined ? (
-          <div className="flex items-center bg-neutral-50 border border-neutral-200 rounded-full px-3.5 sm:px-4 py-1.5 w-full md:w-[320px] lg:w-[400px] focus-within:border-orange-500 focus-within:ring-1 focus-within:ring-orange-500 transition-all duration-200">
+          <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 w-full md:w-[300px] lg:w-[360px] focus-within:border-orange-500 focus-within:ring-2 focus-within:ring-orange-500/20 transition-all duration-200">
             <svg
-              className="w-4.5 h-4.5 text-neutral-400 mr-2 flex-shrink-0"
+              className="w-4 h-4 text-slate-400 mr-2 flex-shrink-0"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -173,40 +295,48 @@ export const Navbar: React.FC<NavbarProps> = ({ searchQuery, setSearchQuery }) =
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search menu..."
-              className="bg-transparent border-none outline-none text-neutral-700 placeholder-neutral-400 text-xs sm:text-sm w-full py-1"
+              placeholder="Search seafood dishes..."
+              className="bg-transparent border-none outline-none text-slate-800 placeholder-slate-400 text-xs sm:text-sm w-full"
             />
-            <button className="flex items-center gap-1 bg-white border border-neutral-200 text-neutral-600 rounded-full px-3 py-1 text-xs font-semibold hover:bg-neutral-50 active:scale-95 transition-all ml-1.5 shadow-xs flex-shrink-0 cursor-pointer">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-              </svg>
-              <span className="hidden xs:inline">Filter</span>
-            </button>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="text-slate-400 hover:text-slate-600 p-0.5 text-xs mr-1"
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            )}
           </div>
         ) : (
           <div className="hidden md:flex items-center">
-            <span className="text-orange-700 font-bold text-sm bg-orange-50 px-4 py-2 rounded-full border border-orange-100 flex items-center gap-2 shadow-xs">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+            <span className="text-emerald-700 font-bold text-xs bg-emerald-50 px-3.5 py-1.5 rounded-full border border-emerald-200 flex items-center gap-2 shadow-xs">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
               </span>
-              Kitchen Mode Active
+              Operational System Ready
             </span>
           </div>
         )}
 
-        {/* Desktop Profile & Notification */}
-        <div className="hidden md:flex items-center gap-3 flex-shrink-0">
-          <button className="w-10 h-10 rounded-full bg-amber-900/10 flex items-center justify-center text-amber-900 hover:bg-amber-900/20 active:scale-95 transition-all duration-150 cursor-pointer">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-            </svg>
-          </button>
-          <button className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500 relative hover:bg-amber-500/20 active:scale-95 transition-all duration-150 cursor-pointer">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+        {/* Desktop Profile & Notification Controls */}
+        <div className="hidden md:flex items-center gap-2 flex-shrink-0">
+          <button
+            className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-200 hover:text-slate-900 active:scale-95 transition-all cursor-pointer"
+            aria-label="Notifications"
+          >
+            <svg className="w-4.5 h-4.5" fill="currentColor" viewBox="0 0 20 20">
               <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
             </svg>
-            <span className="absolute top-2.5 right-3 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
+          </button>
+          <button
+            className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-200 hover:text-slate-900 active:scale-95 transition-all cursor-pointer"
+            aria-label="User Account"
+          >
+            <svg className="w-4.5 h-4.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+            </svg>
           </button>
         </div>
       </div>
@@ -214,3 +344,4 @@ export const Navbar: React.FC<NavbarProps> = ({ searchQuery, setSearchQuery }) =
   )
 }
 
+export default Navbar

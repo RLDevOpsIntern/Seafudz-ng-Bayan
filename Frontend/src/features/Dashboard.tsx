@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import AccordionGallery from '../components/AccordionGallery';
 import ClickStack from '../components/ClickStack';
 import ScrollBubbles from '../components/ScrollBubbles';
+import OceanCreatures from '../components/OceanCreatures';
 
 import seafoodBilaoImg from '../assets/seafood_bilao.png';
 import seafoodCajunImg from '../assets/seafood_cajun.png';
@@ -648,18 +649,6 @@ const Dashboard: React.FC = () => {
             75% { transform: translateX(20vw) translateY(-15px) scaleX(-1) rotate(-5deg); }
             100% { transform: translateX(-15vw) translateY(0) scaleX(-1) rotate(0deg); }
           }
-          @keyframes swimDiagonal {
-            0% { transform: translateX(-15vw) translateY(45px) rotate(-6deg); }
-            33% { transform: translateX(25vw) translateY(-10px) rotate(2deg); }
-            66% { transform: translateX(70vw) translateY(-35px) rotate(-4deg); }
-            100% { transform: translateX(115vw) translateY(15px) rotate(3deg); }
-          }
-          @keyframes fishWiggle {
-            0%, 100% { transform: rotate(0deg) scaleY(1); }
-            25% { transform: rotate(2.5deg) scaleY(0.96); }
-            50% { transform: rotate(0deg) scaleY(1.03); }
-            75% { transform: rotate(-2.5deg) scaleY(0.96); }
-          }
           @keyframes fadeInUp {
             from { opacity: 0; transform: translateY(30px); }
             to { opacity: 1; transform: translateY(0); }
@@ -669,32 +658,8 @@ const Dashboard: React.FC = () => {
         {/* Subtle ambient spotlight background effect */}
         <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[500px] bg-gradient-to-tr from-[#94d2bd]/20 via-[#0a9396]/10 to-transparent rounded-full blur-3xl pointer-events-none transition-opacity duration-1000 ${isArchiveVisible ? 'opacity-100' : 'opacity-0'}`}></div>
 
-        {/* Animated Background Swimming Fish Silhouettes */}
-        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-          <div className="absolute top-12 left-0 animate-[swimRight_24s_ease-in-out_infinite] opacity-25">
-            <svg className="w-24 h-12 text-white/40 animate-[fishWiggle_1.8s_ease-in-out_infinite]" viewBox="0 0 100 60" fill="currentColor">
-              <path d="M10,30 Q35,5 65,30 Q35,55 10,30 Z M65,30 L92,12 L82,30 L92,48 Z M40,14 Q52,6 58,14" />
-            </svg>
-          </div>
-
-          <div className="absolute top-1/4 left-0 animate-[swimLeft_28s_ease-in-out_infinite] opacity-20" style={{ animationDelay: '3s' }}>
-            <svg className="w-20 h-10 text-[#94d2bd]/35 animate-[fishWiggle_1.5s_ease-in-out_infinite]" viewBox="0 0 100 60" fill="currentColor">
-              <path d="M10,30 Q35,5 65,30 Q35,55 10,30 Z M65,30 L92,12 L82,30 L92,48 Z M40,14 Q52,6 58,14" />
-            </svg>
-          </div>
-
-          <div className="absolute top-1/3 left-0 animate-[swimRight_14s_ease-in-out_infinite] opacity-30" style={{ animationDelay: '1s' }}>
-            <svg className="w-14 h-7 text-white/40 animate-[fishWiggle_1.2s_ease-in-out_infinite]" viewBox="0 0 100 60" fill="currentColor">
-              <path d="M10,30 Q35,5 65,30 Q35,55 10,30 Z M65,30 L92,12 L82,30 L92,48 Z M40,14 Q52,6 58,14" />
-            </svg>
-          </div>
-
-          <div className="absolute bottom-16 left-0 animate-[swimRight_19s_ease-in-out_infinite] opacity-25" style={{ animationDelay: '7s' }}>
-            <svg className="w-16 h-8 text-[#94d2bd]/35 animate-[fishWiggle_1.6s_ease-in-out_infinite]" viewBox="0 0 100 60" fill="currentColor">
-              <path d="M10,30 Q35,5 65,30 Q35,55 10,30 Z M65,30 L92,12 L82,30 L92,48 Z M40,14 Q52,6 58,14" />
-            </svg>
-          </div>
-        </div>
+        {/* Animated Background Sea Life Component */}
+        <OceanCreatures />
 
         <div className="max-w-[1200px] mx-auto relative z-10">
           {/* Header with scroll reveal */}
