@@ -81,7 +81,7 @@ steps:
     entrypoint: 'bash'
     args:
       - '-c'
-      - 'npx -y firebase-tools deploy --only hosting --non-interactive || true'
+      - 'npx -y firebase-tools deploy --only hosting --project $PROJECT_ID --non-interactive'
 
 # Store artifact images in GCP Artifact Registry
 images:
