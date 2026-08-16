@@ -83,7 +83,7 @@ steps:
     entrypoint: 'bash'
     args:
       - '-c'
-      - 'npx -y firebase-tools deploy --only hosting --project seafudz-ng-bayan --token "$FIREBASE_TOKEN" --non-interactive'
+      - 'npx -y firebase-tools deploy --only hosting --project seafudz-ng-bayan --non-interactive'
 
 # Store artifact images in GCP Artifact Registry
 images:
