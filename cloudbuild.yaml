@@ -76,12 +76,14 @@ steps:
   # -------------------------------------------------------------------------
   # Step 6: Deploy Frontend Static Distribution to Firebase Hosting
   # -------------------------------------------------------------------------
-  - name: 'node:22'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'deploy-frontend-firebase'
     entrypoint: 'bash'
     args:
       - '-c'
-      - 'npx -y firebase-tools deploy --only hosting --project $PROJECT_ID --non-interactive'
+      - |
+        curl -sL https://firebase.tools | bash
+        firebase deploy --only hosting --project $PROJECT_ID --token "$(gcloud auth print-access-token)" --non-interactive
 
 # Store artifact images in GCP Artifact Registry
 images:
